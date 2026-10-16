@@ -13,6 +13,7 @@ import { createContext, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 
 export type PageId =
+  | 'overview'
   | 'mission-control'
   | 'orbital-catalog'
   | 'mission-planner'
@@ -87,7 +88,9 @@ function prefersReducedMotion(): boolean {
 }
 
 export function UIProvider({ children }: { children: ReactNode }) {
-  const [page, setPage] = useState<PageId>('mission-control');
+  // The dashboard, not the 3-D view: a reader arriving at the workspace should first see what
+  // the system knows, then go looking at the globe. Mission Control is one click away.
+  const [page, setPage] = useState<PageId>('overview');
   const [presentationMode, setPresentationMode] = useState(false);
   const [reducedMotion, setReducedMotion] = useState(prefersReducedMotion);
   const [earthRotation, setEarthRotation] = useState(true);

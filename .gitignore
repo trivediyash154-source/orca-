@@ -29,3 +29,8 @@ benchmarks/figures/
 
 # Logs
 *.log
+
+# Environment
+.env
+.env.local
+.vercel/

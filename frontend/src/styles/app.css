@@ -1,5 +1,8 @@
 @import './tokens.css';
 @import './catalog.css';
+@import './dashboard.css';
+/* Last: refines surfaces the three files above have already laid down. */
+@import './depth.css';
 
 * {
   box-sizing: border-box;

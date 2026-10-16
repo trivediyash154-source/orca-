@@ -1,0 +1,258 @@
+/**
+ * Surface depth, applied across the entry surface and the workspace.
+ *
+ * This file contains no colour of its own: every value is one of the depth tokens defined at
+ * the foot of `tokens.css` (`--orca-veil-*`, `--orca-edge-*`, `--orca-ambient-*`,
+ * `--orca-shadow-*`), which are themselves defined for both themes. So each rule below is
+ * written once and is correct in dark and light alike — in dark it adds lit elevation, in
+ * light it adds the paper-and-shadow equivalent.
+ *
+ * It is imported LAST, after `tokens.css`, `catalog.css` and `dashboard.css`, because its whole
+ * job is to specialise surfaces those files have already laid down. Each selector here matches
+ * the same specificity or higher than the rule it refines, and changes only background,
+ * box-shadow and border — never layout, size or type, so nothing moves when this file loads.
+ */
+
+/* ==========================================================================
+   1. Grounds — the ambient wash
+   ==========================================================================
+   Two large radial gradients, fixed to the viewport so they do not slide under a
+   scrolling page and give away that they are a backdrop rather than light. */
+
+body {
+  background-image:
+    radial-gradient(90rem 60rem at 12% -10%, var(--orca-ambient-cool), transparent 60%),
+    radial-gradient(70rem 50rem at 95% 108%, var(--orca-ambient-warm), transparent 62%);
+  background-attachment: fixed;
+  background-repeat: no-repeat;
+}
+
+/* ==========================================================================
+   2. Entry surface — the authentication console
+   ========================================================================== */
+
+.mk-auth-console {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low) 38%, transparent 70%),
+    radial-gradient(44rem 30rem at 108% -8%, var(--orca-ambient-cool), transparent 62%),
+    radial-gradient(38rem 34rem at -10% 112%, var(--orca-ambient-warm), transparent 60%),
+    /* A chromatic base rather than the flat near-black surface token: the console is lit by the
+       same scene it sits beside, so its ground carries a trace of that blue. Mixed from tokens,
+       so the light theme resolves it to warm paper. */
+    color-mix(in srgb, var(--orca-spectral-2) 6%, var(--orca-surface));
+  /* The seam between the scene and the console is the most important edge on the page: it is
+     where a window meets a wall. A hairline plus a wide inward shadow makes the console sit in
+     front of the scene instead of being pasted beside it. */
+  box-shadow:
+    inset 1px 0 0 var(--orca-edge-light),
+    -24px 0 64px -32px var(--orca-edge-dark);
+}
+
+/* The heading takes programmatic focus when the mode changes (sign in / create account), which
+   is correct — but the user-agent focus ring drew a hard box around a 2-line display heading
+   and read as a rendering bug. It is replaced by a quiet accent rule under the title: still an
+   unmistakable "focus is here" signal, at the weight a heading deserves. */
+.mk-page .mk-auth-title:focus {
+  outline: none;
+}
+
+/* Specificity note: `base.css`'s `.mk-page :focus-visible` is (0,2,0) and loads after this
+   file, so the selector below is qualified with `.mk-page` to reach (0,3,0) and win. */
+.mk-page .mk-auth-title:focus-visible {
+  outline: none;
+  box-shadow: 0 2px 0 -1px var(--orca-mission-active);
+}
+
+/* Inputs read as recessed, which is the half of the elevation story a flat fill cannot tell:
+   a control you type into should look like a well, not a plate. */
+.mk-auth-field__input,
+.mk-auth-code__input {
+  background:
+    linear-gradient(180deg, var(--orca-veil-sunken), transparent 52%),
+    color-mix(in srgb, var(--orca-spectral-2) 5%, var(--orca-void-raised));
+  box-shadow:
+    inset 0 1px 3px var(--orca-edge-dark),
+    inset 0 -1px 0 var(--orca-edge-light);
+}
+
+.mk-auth-field__input:focus {
+  box-shadow:
+    inset 0 1px 2px var(--orca-edge-dark),
+    var(--orca-focus-glow);
+}
+
+/* Social buttons are the opposite: raised plates, with the top-edge highlight that says so. */
+.mk-auth-social__button {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low)),
+    color-mix(in srgb, var(--orca-spectral-2) 4%, var(--orca-surface-elevated));
+  box-shadow:
+    inset 0 1px 0 var(--orca-edge-light),
+    var(--orca-shadow-raised);
+}
+
+.mk-auth-social__button:hover:not(:disabled) {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-high)),
+    var(--orca-surface-elevated);
+  box-shadow:
+    inset 0 1px 0 var(--orca-edge-light),
+    var(--orca-shadow-floating);
+}
+
+.mk-auth-social__button:active:not(:disabled) {
+  /* Pressed: the highlight moves to the bottom and the shadow collapses, which is what a real
+     pressed key does. One frame of this is worth any amount of colour change. */
+  box-shadow:
+    inset 0 -1px 0 var(--orca-edge-light),
+    inset 0 2px 4px var(--orca-edge-dark);
+}
+
+/* ==========================================================================
+   3. Entry surface — cards, panels and the nav
+   ========================================================================== */
+
+.mk-nav {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), transparent),
+    var(--orca-glass);
+  box-shadow: inset 0 -1px 0 var(--orca-edge-dark);
+}
+
+.mk-card,
+.mk-panel,
+.mk-metric,
+.mk-capability,
+.mk-research-item,
+.mk-pipeline-step,
+.mk-preview-frame {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low) 46%, transparent),
+    var(--orca-void-raised);
+  box-shadow:
+    inset 0 1px 0 var(--orca-edge-light),
+    var(--orca-shadow-raised);
+}
+
+/* ==========================================================================
+   4. Workspace — shell chrome
+   ========================================================================== */
+
+.top-bar {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), transparent),
+    var(--orca-surface);
+  box-shadow:
+    inset 0 1px 0 var(--orca-edge-light),
+    inset 0 -1px 0 var(--orca-edge-dark),
+    var(--orca-shadow-raised);
+  /* Lifted above the body so its shadow falls on the content rather than being clipped by it. */
+  position: relative;
+  z-index: 3;
+}
+
+.sidebar-nav {
+  background:
+    linear-gradient(90deg, var(--orca-veil-low), transparent 40%),
+    var(--orca-surface);
+  box-shadow: inset -1px 0 0 var(--orca-edge-dark);
+}
+
+.nav-item-active {
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--orca-primary) 18%, transparent), transparent 70%),
+    transparent;
+  /* The active marker is a left bar rather than a fill, so the item is identifiable by shape as
+     well as by colour. */
+  box-shadow: inset 2px 0 0 var(--orca-primary);
+}
+
+.event-timeline {
+  background:
+    linear-gradient(180deg, var(--orca-veil-low), transparent),
+    var(--orca-surface);
+  box-shadow: inset 0 1px 0 var(--orca-edge-light);
+}
+
+/* ==========================================================================
+   5. Workspace — dashboard panels and tiles
+   ========================================================================== */
+
+.dash-stat,
+.dash-panel {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low) 40%, transparent 72%),
+    color-mix(in srgb, var(--orca-spectral-2) 4%, var(--orca-surface));
+  box-shadow:
+    inset 0 1px 0 var(--orca-edge-light),
+    var(--orca-shadow-raised);
+}
+
+.dash-panel:hover {
+  box-shadow:
+    inset 0 1px 0 var(--orca-edge-light),
+    var(--orca-shadow-floating);
+}
+
+/* The sticky table header sits on the panel's own gradient, so it needs its own opaque fill or
+   rows scroll visibly through it. */
+.dash-table th {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low)),
+    var(--orca-surface);
+}
+
+.dash-bars__track,
+.dash-meter {
+  background: var(--orca-veil-sunken);
+  box-shadow: inset 0 1px 2px var(--orca-edge-dark);
+}
+
+.dash-source-banner {
+  box-shadow:
+    inset 0 1px 0 var(--orca-edge-light),
+    var(--orca-shadow-raised);
+}
+
+/* ==========================================================================
+   6. Workspace — the panels the other pages are built from
+   ==========================================================================
+   Named individually rather than with a wildcard: a blanket `[class*="panel"]`
+   would also catch the 3-D scene's overlay, which must stay transparent. */
+
+.control-panel,
+.object-inspector,
+.mission-intelligence,
+.fleet-readiness,
+.emergency-queue,
+.rescue-operations,
+.benchmark-evidence,
+.catalog-panel,
+.catalog-controls,
+.satellite-detail {
+  background:
+    linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low) 44%, transparent),
+    var(--orca-surface);
+  box-shadow:
+    inset 0 1px 0 var(--orca-edge-light),
+    var(--orca-shadow-raised);
+}
+
+/* ==========================================================================
+   7. Motion
+   ==========================================================================
+   Shadow transitions only, and only for readers who have not asked for less
+   motion. Nothing here moves an element's position on hover: a dashboard panel
+   that jumps under the pointer makes a dense page feel unstable. */
+
+@media (prefers-reduced-motion: no-preference) {
+  .mk-auth-social__button,
+  .dash-panel,
+  .mk-card,
+  .mk-panel {
+    transition:
+      box-shadow 180ms cubic-bezier(0.2, 0, 0.2, 1),
+      border-color 180ms cubic-bezier(0.2, 0, 0.2, 1),
+      background-color 180ms cubic-bezier(0.2, 0, 0.2, 1);
+  }
+}

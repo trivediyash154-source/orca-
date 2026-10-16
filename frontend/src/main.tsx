@@ -9,6 +9,13 @@ import { createRoot } from 'react-dom/client';
 // the module graph happened to resolve.
 import './styles/app.css';
 import { App } from './App';
+import { orcaAuthAdapter } from './auth/authAdapter';
+import { configureAuth } from './services/authService';
+
+// Before the first render, as `authService.ts` requires: `AuthForm` reads `isAuthConfigured()`
+// during its initial render to decide whether to show the integration notice, so registering
+// the adapter after mount would flash a "not connected" state over a form that is connected.
+configureAuth(orcaAuthAdapter);
 
 const rootElement = document.getElementById('root');
 if (!rootElement) {

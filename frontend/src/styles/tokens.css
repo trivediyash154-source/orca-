@@ -237,3 +237,84 @@
   --orca-rescue-signal: #b2451a;
   --orca-focus-ring: #1a5c99;
 }
+
+
+/* ==========================================================================
+   Dark-theme depth tokens
+   --------------------------------------------------------------------------
+   The dark palette above gets its colours right and its SURFACES wrong: every
+   panel was one flat fill over one flat ground, so a console, a card and the
+   page behind them all read at the same depth and the result looked unlit
+   rather than dark.
+
+   Real dark interfaces are not "light with the colours inverted" — they are lit.
+   Three mechanisms do that work here, and all three are tokens so no component
+   paints a literal:
+
+     1. AMBIENT  — two very low-alpha chromatic washes over the ground, so the
+        black is a colour rather than an absence of one. Without this a large
+        dark surface reads as a hole punched in the screen.
+     2. VEIL     — a top-to-bottom white gradient at 3-5% laid over a panel's own
+        fill. This is how elevation is expressed without lightening the token:
+        a raised surface catches more of the imagined light at its top edge.
+     3. EDGE     — a 1px inset highlight along the top edge and a matching dark
+        line along the bottom. It is the single highest-value trick in dark UI:
+        it separates a panel from its ground at any contrast level, including
+        for a reader with a dim display who cannot see the fill difference.
+
+   Every value is deliberately small. Dark design fails in the other direction
+   too: a 12% veil turns a panel grey and the whole surface muddies.
+   ========================================================================== */
+
+:root {
+  /* Ambient wash. Blue above, violet below — the two hues already in the
+     spectral ramp, so the ground belongs to the same palette as the content. */
+  --orca-ambient-cool: rgba(74, 144, 214, 0.13);
+  --orca-ambient-warm: rgba(139, 110, 221, 0.1);
+
+  /* Elevation veils, lightest for the most raised surface. */
+  --orca-veil-high: rgba(255, 255, 255, 0.082);
+  --orca-veil-low: rgba(255, 255, 255, 0.022);
+  --orca-veil-sunken: rgba(0, 0, 0, 0.34);
+
+  /* Edges. */
+  --orca-edge-light: rgba(255, 255, 255, 0.11);
+  --orca-edge-dark: rgba(0, 0, 0, 0.5);
+
+  /* Shadows with real falloff. A single blur at a single alpha reads as a
+     smudge; a tight contact shadow plus a wide ambient one reads as height. */
+  --orca-shadow-raised:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 12px 32px -10px rgba(0, 0, 0, 0.72);
+  --orca-shadow-floating:
+    0 2px 4px rgba(0, 0, 0, 0.5),
+    0 24px 64px -16px rgba(0, 0, 0, 0.8);
+
+  /* Focus glow, used alongside the ring so a focused control is unmistakable
+     on a dark ground without the ring having to get thicker. */
+  --orca-focus-glow: 0 0 0 3px rgba(74, 201, 214, 0.22);
+}
+
+/* The light theme keeps the same token NAMES so every rule below works in both,
+   and gives them light-appropriate values: warm shadow instead of black, a
+   near-invisible veil (paper does not catch a highlight), and ink edges. */
+:root[data-theme='light'] {
+  --orca-ambient-cool: rgba(26, 92, 153, 0.045);
+  --orca-ambient-warm: rgba(138, 90, 0, 0.035);
+
+  --orca-veil-high: rgba(255, 255, 255, 0.7);
+  --orca-veil-low: rgba(255, 255, 255, 0.2);
+  --orca-veil-sunken: rgba(60, 46, 26, 0.045);
+
+  --orca-edge-light: rgba(255, 255, 255, 0.85);
+  --orca-edge-dark: rgba(60, 46, 26, 0.1);
+
+  --orca-shadow-raised:
+    0 1px 2px rgba(60, 46, 26, 0.07),
+    0 8px 24px -10px rgba(60, 46, 26, 0.16);
+  --orca-shadow-floating:
+    0 2px 4px rgba(60, 46, 26, 0.08),
+    0 20px 48px -14px rgba(60, 46, 26, 0.2);
+
+  --orca-focus-glow: 0 0 0 3px rgba(26, 92, 153, 0.18);
+}

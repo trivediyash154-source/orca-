@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 
+import { DataSourceBanner } from '../DataSourceBanner';
 import { EngineOfflineOverlay } from '../EngineOfflineOverlay';
 import { Sidebar } from '../navigation/Sidebar';
 import { EventTimeline } from '../timeline/EventTimeline';
@@ -18,6 +19,7 @@ export function AppShell({ children }: AppShellProps) {
   return (
     <div className="app-shell">
       <TopBar />
+      <DataSourceBanner />
       <div className="app-body">
         <Sidebar />
         <main className="main-content">{children}</main>

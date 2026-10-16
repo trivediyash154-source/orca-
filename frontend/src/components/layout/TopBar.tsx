@@ -4,6 +4,7 @@ import type { RouteContextValue } from '../../routes/RouteContext';
 import { useRoute } from '../../routes/RouteContext';
 import { useEngine } from '../../state/EngineContext';
 import { useUI } from '../../state/UIContext';
+import { useSession } from '../../state/SessionContext';
 import { useTheme } from '../../state/ThemeContext';
 import { formatSimTime } from '../../utils/format';
 
@@ -23,6 +24,18 @@ import { formatSimTime } from '../../utils/format';
 function useOptionalRoute(): RouteContextValue | null {
   try {
     return useRoute();
+  } catch {
+    return null;
+  }
+}
+
+/** Same reasoning as `useOptionalRoute`: the shell is mounted without a `SessionProvider` by
+ * several component tests, and the account chip is the one thing in the top bar that is
+ * genuinely optional. */
+function useOptionalSession(): { readonly email: string; readonly signOut: () => void } | null {
+  try {
+    const { user, signOut } = useSession();
+    return user === null ? null : { email: user.email, signOut };
   } catch {
     return null;
   }
@@ -65,6 +78,7 @@ export function TopBar() {
   const { setPresentationMode } = useUI();
   const { preference, theme, cycle } = useTheme();
   const route = useOptionalRoute();
+  const session = useOptionalSession();
 
   return (
     <header className="top-bar">
@@ -121,6 +135,16 @@ export function TopBar() {
       <button className="presentation-toggle" onClick={() => setPresentationMode(true)}>
         Present
       </button>
+      {session ? (
+        <div className="top-bar-account">
+          <span className="top-bar-account__email" title={session.email}>
+            {session.email}
+          </span>
+          <button type="button" className="top-bar-account__out" onClick={session.signOut}>
+            Sign out
+          </button>
+        </div>
+      ) : null}
     </header>
   );
 }

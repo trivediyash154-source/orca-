@@ -29,3 +29,11 @@ benchmarks/figures/
 
 # Logs
 *.log
+
+# Environment
+.env
+.env.local
+.vercel/
+
+# Local Claude Code / editor launch settings -- per-machine, not part of the project
+.claude/

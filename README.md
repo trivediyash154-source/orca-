@@ -95,7 +95,8 @@ ORCA is engineered in modern **C++20** as a data-structures-and-algorithms labor
 | **Pruning** | **Pareto & $\varepsilon$-Dominance Checking** | [`cpp/algorithms/Dominance.cpp`](cpp/algorithms/Dominance.cpp) | Comparison: $O(k)$ | $O(1)$ | Prunes dominated partial paths; $\varepsilon$-box dominance prevents combinatorial label explosion |
 | **Matching** | **Hungarian Algorithm (Kuhn–Munkres)** | [`cpp/algorithms/Hungarian.cpp`](cpp/algorithms/Hungarian.cpp) | $O(n^3)$ | $O(n^2)$ | Optimal multi-vehicle to multi-casualty global assignment via dual potentials and augmenting paths |
 | **Matching** | **Greedy Assignment Heuristic** | [`cpp/algorithms/GreedyAssignment.cpp`](cpp/algorithms/GreedyAssignment.cpp) | $O(m \cdot n \cdot \min(m, n))$ | $O(m \cdot n)$ | Deterministic local-minimum heuristic baseline used to quantify assignment regret |
-| **Spatial Index**| Uniform 3D Spatial Grid | [`cpp/analytics/SpatialIndex.hpp`](cpp/analytics/SpatialIndex.hpp) | Query: $O(1)$ expected<br/>Rebuild: $O(D)$ | $O(D)$ | Spatial bucketing for debris conjunction analysis (evaluated vs K-D Trees and Octrees) |
+| **Sorting / Selection** | Introsort + deterministic comparator chains (`std::sort`) | [`cpp/optimization/MissionScorer.cpp`](cpp/optimization/MissionScorer.cpp) | $O(n \log n)$ | $O(\log n)$ | Ranks Pareto solutions under a weighted profile with a total-order tie-break chain, so the same front always yields the same recommendation |
+| **Dynamic Array** | Contiguous ID-dense vectors (`std::vector`) | [`cpp/graph/MissionGraph.hpp`](cpp/graph/MissionGraph.hpp), [`cpp/domain/Scenario.hpp`](cpp/domain/Scenario.hpp) | Index: $O(1)$<br/>Append: $O(1)$ amortized | $O(n)$ | `NodeId`/`EdgeId` are issued sequentially from zero, so an ID *is* an array index — no hash lookup anywhere on the search's hot path |
 
 ---
 
@@ -134,8 +135,9 @@ ORCA is engineered in modern **C++20** as a data-structures-and-algorithms labor
   To eliminate searching the tree for an event to cancel, `EventQueue` maintains an auxiliary hash table `std::unordered_map<uint32_t, multiset::iterator> byId_`. This caches the exact node pointer into the Red-Black tree, allowing $O(1)$ lookup and $O(\log N)$ targeted tree node erasure.
 - **State-Space Search Trees**:
   In A* and Martins' label-setting, search paths branch across orbital waypoints, forming an implicit search tree. Subtrees that cannot yield non-dominated solutions are pruned immediately via Pareto dominance checks (branch-and-bound).
-- **Spatial Tree Trade-Offs (Why Uniform Grid over K-D Tree / Octree?)**:
-  As documented in [`docs/ALGORITHMS.md §9`](docs/ALGORITHMS.md), orbital debris moves continuously under orbital mechanics. While a K-D tree or Octree provides $O(\log D)$ static queries, it requires $O(D \log D)$ rebalancing on every simulation tick as orbital coordinates update. A uniform 3D grid rebuilds in $O(D)$ and queries in expected $O(1)$, making it strictly superior for dynamic orbital bodies.
+- **Spatial Indexing — designed, deliberately not yet built**:
+  [`docs/ALGORITHMS.md §9`](docs/ALGORITHMS.md) specifies a uniform 3-D grid for debris conjunction queries, and argues it against a K-D tree or octree: orbital debris moves continuously, so a tree pays $O(D \log D)$ rebalancing on *every* simulation tick to buy $O(\log D)$ queries, while a grid rebuilds in $O(D)$ and queries in expected $O(1)$.
+  **That index is not in the engine today**, and neither is the debris-proximity term that would consume it. [`cpp/transfer/TransferRiskModel.hpp`](cpp/transfer/TransferRiskModel.hpp) states this in its own header and gives the reason: a zero-weighted fourth risk factor "would look like a feature and behave like nothing." Transfer risk is therefore computed from three geometric factors — manoeuvre severity, plane-change share and arrival fuel margin — and debris is rendered and tracked, but does not yet enter the risk objective.
 
 #### 3. 🕸️ Graphs & Network Topologies
 - **Representation**: Weighted Directed Graph using Adjacency Lists ([`cpp/graph/MissionGraph.hpp`](cpp/graph/MissionGraph.hpp)):
@@ -182,6 +184,88 @@ ORCA is engineered in modern **C++20** as a data-structures-and-algorithms labor
   - Iteratively pairs the cheapest available vehicle-casualty edge.
   - Used as an empirical baseline in the benchmark suite: demonstrates where greedy decisions fail (e.g., committing a versatile vehicle to a local minimum that strands a critical emergency) and measures true Hungarian regret.
 
+#### 7. ⚖️ Where each algorithm is actually *decided* between
+
+The engine does not pick one search and hide the others. All three run against the identical
+[`MissionGraph`](cpp/graph/MissionGraph.hpp), which is what makes the comparison in the
+Algorithm Lab meaningful rather than decorative:
+
+| Question the planner is asking | Algorithm it runs | Why the other two are wrong for it |
+|---|---|---|
+| "What is the soonest this vehicle can be there?" | Dijkstra | A* needs a target-specific heuristic and gains nothing when the answer is needed for *every* node; Pareto search returns a set where a single number was asked for |
+| "Soonest arrival at *this one* target?" | A* | Dijkstra expands the whole reachable frontier; the admissible Hohmann + plane-change lower bound ([`AStarHeuristic.cpp`](cpp/algorithms/AStarHeuristic.cpp)) prunes most of it |
+| "What are the operator's *options*?" | Martins' label setting | Both scalar searches have already collapsed the trade-off into one number by the time they return — the information cannot be recovered afterwards |
+| "Which vehicle takes which casualty?" | Hungarian | Greedy commits a versatile vehicle to a local minimum and strands a critical emergency; the benchmark suite measures exactly that regret |
+
+The single most important design consequence sits in
+[`Dijkstra.hpp`](cpp/algorithms/Dijkstra.hpp)'s own header: Dijkstra enforces **per-edge**
+delta-v feasibility but *cannot* enforce a **cumulative** path-wide delta-v budget. A slower
+path that has spent less fuel is not dominated by a faster, thirstier one — but single-label
+search has already discarded it by the time that matters. Enforcing a cumulative resource
+constraint correctly requires keeping multiple non-dominated labels per node, which is precisely
+what label setting does. The project resisted bolting a second, narrower version of that
+machinery onto Dijkstra, and the header says so.
+
+#### 8. 🧪 How the data structures are held to their complexity claims
+
+Every complexity figure in the matrix above is a claim the test and benchmark suites check,
+not a comment:
+
+- **Property tests** assert the invariants directly — that every surviving label in a front is
+  mutually non-dominated, that the Hungarian result is a true permutation, and that dominance is
+  irreflexive and transitive.
+- **Dual certificates** verify optimality rather than observing it. The Hungarian solver's final
+  potentials satisfy $\sum u_i + \sum v_j = $ matching cost, and LP duality makes that an
+  optimality *proof*, not a low number that looked right.
+- **Scaling benchmarks** ([`benchmarks/`](benchmarks), [`docs/BENCHMARK_PLAN.md`](docs/BENCHMARK_PLAN.md))
+  fit measured runtime against the predicted curve, which is how the 45.9× label-setting cost
+  growth from 25 to 100 objects quoted on the landing page was obtained.
+- **Determinism tests** run the same scenario twice and compare byte-for-byte. Every comparator
+  in the codebase terminates in a guaranteed-unique key for this reason: `std::priority_queue`
+  and `std::multiset` make no stable-order guarantee for equal keys, so equal keys are never
+  allowed to occur.
+
+---
+
+### 🚀 Deployment, authentication and the browser model
+
+The React frontend ([`frontend/`](frontend)) is a static bundle; accounts are served by one
+Vercel Function beside it ([`api/auth/[action].ts`](api/auth/%5Baction%5D.ts)).
+
+- **Accounts work from any device.** Sign-up hashes the password with scrypt (N = 2¹⁵, r = 8,
+  p = 1, 16-byte salt per account) and stores only the hash, in a private Vercel Blob store.
+  Sign-in repeats the derivation and compares in constant time; an unknown address and a wrong
+  password take the same time and get the same answer. The session is an HMAC-signed, expiring
+  token in an `HttpOnly`, `SameSite=Lax` cookie, so no script on the page can read it, and every
+  state-changing request must be same-origin.
+- **Off Vercel, accounts fall back to the browser.** Served by anything without the function
+  (`vite preview`, a plain static host), the app keeps accounts in the browser instead, as a
+  PBKDF2-HMAC-SHA-256 hash (210 000 iterations)
+  ([`frontend/src/auth/accountStore.ts`](frontend/src/auth/accountStore.ts)), and the sign-up
+  confirmation says which of the two happened. An account first made that way moves to the
+  server the next time it signs in on a deployment that has one.
+- **"Continue with Google" is Google's own sign-in once a client ID is set.** Google issues
+  OAuth client IDs per site, to the site's owner, so one cannot be committed to a repository.
+  To switch it on:
+  1. In [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials),
+     create an **OAuth client ID** of type **Web application**.
+  2. Under **Authorised JavaScript origins**, add the deployment's address (for example
+     `https://orca-orbital-rescue.vercel.app`) and `http://localhost:5173`.
+  3. Add the client ID to the Vercel project as the environment variable `GOOGLE_CLIENT_ID`,
+     then redeploy.
+
+  The button then opens Google's account chooser — pick an account, no password — and the
+  function verifies the returned token with Google, including that it was issued for this site,
+  before creating the session. Until then the button opens a device-local chooser that states,
+  in the dialog itself, that Google verified nothing.
+- **The workspace runs without the C++ engine.** `EngineProvider` probes the Node bridge, and
+  when nothing answers it switches to an in-browser kinematic model
+  ([`frontend/src/services/demoEngine.ts`](frontend/src/services/demoEngine.ts)): real
+  closed-form circular-orbit motion, a recurring emergency arrival process, and representative
+  Pareto fronts and algorithm counters. A banner on every page says which of the two is
+  producing the numbers. Start the engine and the bridge locally and the frontend switches to
+  the real thing automatically, with no flag to set.
+
 ---
 
 ### End-to-End Algorithmic Decision Pipeline
@@ -190,8 +274,8 @@ ORCA is engineered in modern **C++20** as a data-structures-and-algorithms labor
 flowchart TD
     EM["🚨 Orbital Emergency Declared"] --> PQ["Balanced BST Event Queue<br/>(std::multiset · O(log N))"]
     PQ --> GB["Graph Construction & Feasibility Pruner<br/>(Adjacency List · O(V + E))"]
-    GB --> SP["Spatial Grid Collision Query<br/>(Uniform 3D Grid · O(1) expected)"]
-    SP --> MODE{"Planning Mode"}
+    GB --> FEAS["Per-Edge Feasibility Filter<br/>(Δv · inclination · deadline · O(V²))"]
+    FEAS --> MODE{"Planning Mode"}
 
     MODE -->|"Baseline 1"| DIJ["Dijkstra Shortest Path<br/>O((V+E) log V) · Earliest Arrival"]
     MODE -->|"Baseline 2"| AST["A* Search<br/>Admissible Hohmann Heuristics"]

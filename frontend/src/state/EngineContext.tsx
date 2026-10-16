@@ -20,6 +20,8 @@ import {
   type RunnableAlgorithm,
   type SimCommand,
 } from '../services/engineService';
+import { demoSnapshot } from '../services/demoEngine';
+import { rescoreFront } from '../services/profileScoring';
 import type { SelectableEntity, SimulationSnapshot } from '../types/engine';
 
 /** Brief §37's five states, verbatim. */
@@ -30,6 +32,30 @@ export type ConnectionStatus = 'Connecting' | 'Connected' | 'EngineStarting' | '
  * safely assume the snapshot shape it expects -- brief §54: "the frontend should be able to
  * detect incompatibility rather than rendering corrupted data." */
 export const EXPECTED_SCHEMA_VERSION = 1;
+
+/** How many consecutive unanswered probes mean "there is no bridge here", rather than "the
+ * engine is still starting". At the default 500 ms interval this is a ~3 s wait, which is long
+ * enough for a local `npm run dev` backend to come up and short enough that a static visitor
+ * is not left staring at a spinner. */
+const DEMO_FALLBACK_ATTEMPTS = 6;
+
+/** `VITE_DEMO_MODE=1` skips probing entirely -- the setting a static deployment uses, so no
+ * visitor pays for six requests to a host that is not there. */
+const FORCE_DEMO = import.meta.env.VITE_DEMO_MODE === '1';
+
+/** The demo clock does not start at zero: T+0 has no emergencies, no missions and no events,
+ * and a dashboard of empty panels is a poor first impression of work that is not empty. This
+ * lands mid-scenario, with missions in flight and some already completed. */
+const DEMO_START_SEC = 7_200;
+
+/** Four snapshots a second. At one a second, a satellite at 16x crosses ~120 km of orbit per
+ * step and visibly jumps; at four it reads as motion. */
+const DEMO_TICK_MS = 250;
+
+/** The browser model opens at 16x. At 1x a LEO satellite moves about a pixel a minute on a
+ * laptop screen, so the scene looked frozen — the most common reading of it was "broken". The
+ * speed control still offers every engine multiplier, including 1x. */
+const DEMO_DEFAULT_SPEED = 16;
 
 interface EngineContextValue {
   /** Exposed (not just used internally) so pages that need a REST call outside the
@@ -49,6 +75,16 @@ interface EngineContextValue {
    * UI) can show its OWN result inline without racing another component's `lastError`. */
   readonly runAlgorithm: (algorithm: RunnableAlgorithm, vehicleId?: string, emergencyId?: string) => Promise<boolean>;
   readonly lastError: string | null;
+  /**
+   * Which process produced `snapshot`. `'engine'` is the real C++ engine behind the Node
+   * bridge; `'demo'` is `services/demoEngine.ts`'s in-browser kinematic model, used when no
+   * bridge is reachable (a static deployment, or a checkout with no build toolchain).
+   *
+   * Exposed so the UI can SAY which one it is showing. A silent fallback would be the worst
+   * of the three options: better a labelled model than either a dead workspace or an
+   * unlabelled imitation of engine output.
+   */
+  readonly dataSource: 'engine' | 'demo';
 }
 
 // Exported (not just used internally) so tests can render components against an injected
@@ -70,9 +106,70 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
   const [lastError, setLastError] = useState<string | null>(null);
   const hasConnectedOnce = useRef(false);
 
+  /** `'engine'` until the bridge has been given a fair chance to answer. Flipping to `'demo'`
+   * is one-way for the lifetime of the provider: a bridge that appears later must not yank the
+   * floor out from under a workspace someone is already reading. */
+  const [dataSource, setDataSource] = useState<'engine' | 'demo'>(() =>
+    FORCE_DEMO ? 'demo' : 'engine',
+  );
+
+  /** Demo-mode clock, in simulation seconds. A ref rather than state because the ticker writes
+   * it every frame-ish interval and only the derived snapshot needs to re-render. */
+  const demoTimeRef = useRef(DEMO_START_SEC);
+  const demoStatusRef = useRef<'RUNNING' | 'PAUSED'>('RUNNING');
+  const demoSpeedRef = useRef(DEMO_DEFAULT_SPEED);
+  /** Mission id -> profile name for every live re-score requested in demo mode. */
+  const demoRescoreRef = useRef(new Map<string, string>());
+
+  const publishDemo = useCallback(() => {
+    const base = demoSnapshot({
+      timeSec: demoTimeRef.current,
+      status: demoStatusRef.current,
+      speedMultiplier: demoSpeedRef.current,
+    });
+    const rescores = demoRescoreRef.current;
+    setSnapshot(
+      rescores.size === 0
+        ? base
+        : {
+            ...base,
+            missions: base.missions.map((mission) => {
+              const profile = rescores.get(mission.id);
+              if (profile === undefined) return mission;
+              return {
+                ...mission,
+                paretoFront: rescoreFront(mission.paretoFront, profile),
+                activeRescoreProfile: profile,
+              };
+            }),
+          },
+    );
+    setStatus('Connected');
+    setLastError(null);
+  }, []);
+
+  // The demo ticker. Mounted only once `dataSource` is `'demo'`, so the real path pays nothing
+  // for it.
   useEffect(() => {
+    if (dataSource !== 'demo') return undefined;
+
+    publishDemo();
+    const interval = setInterval(() => {
+      if (demoStatusRef.current === 'RUNNING') {
+        demoTimeRef.current += (DEMO_TICK_MS / 1000) * demoSpeedRef.current;
+      }
+      publishDemo();
+    }, DEMO_TICK_MS);
+
+    return () => clearInterval(interval);
+  }, [dataSource, publishDemo]);
+
+  useEffect(() => {
+    if (dataSource === 'demo') return undefined;
+
     let cancelled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    let failures = 0;
 
     async function poll(): Promise<void> {
       try {
@@ -106,6 +203,17 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
         }
       } catch (err) {
         if (cancelled) return;
+
+        failures += 1;
+        // Nothing has ever answered on this base URL, and it has now been asked often enough
+        // that "still starting" is not a credible explanation. Rather than show an offline
+        // overlay forever -- which is what a static deployment with no bridge would do -- hand
+        // the workspace the in-browser model, clearly labelled as such.
+        if (!hasConnectedOnce.current && failures >= DEMO_FALLBACK_ATTEMPTS) {
+          setDataSource('demo');
+          return;
+        }
+
         if (err instanceof EngineDownError) {
           setStatus('EngineStarting');
         } else {
@@ -124,10 +232,20 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [baseUrl, pollIntervalMs]);
+  }, [baseUrl, pollIntervalMs, dataSource]);
 
   const sendCommand = useCallback(
     async (cmd: SimCommand) => {
+      if (dataSource === 'demo') {
+        // The demo model's clock is the only state a command can touch; everything else in the
+        // snapshot is a pure function of it.
+        if (cmd === 'pause') demoStatusRef.current = 'PAUSED';
+        else if (cmd === 'resume' || cmd === 'start') demoStatusRef.current = 'RUNNING';
+        else if (cmd === 'reset') demoTimeRef.current = DEMO_START_SEC;
+        else if (cmd === 'step') demoTimeRef.current += 1;
+        publishDemo();
+        return;
+      }
       try {
         const snap = await sendSimCommand(baseUrl, cmd);
         setSnapshot(snap);
@@ -136,11 +254,16 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
         setLastError(err instanceof Error ? err.message : String(err));
       }
     },
-    [baseUrl],
+    [baseUrl, dataSource, publishDemo],
   );
 
   const advance = useCallback(
     async (seconds: number) => {
+      if (dataSource === 'demo') {
+        demoTimeRef.current = Math.max(0, demoTimeRef.current + seconds);
+        publishDemo();
+        return;
+      }
       try {
         const snap = await sendAdvance(baseUrl, seconds);
         setSnapshot(snap);
@@ -149,11 +272,16 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
         setLastError(err instanceof Error ? err.message : String(err));
       }
     },
-    [baseUrl],
+    [baseUrl, dataSource, publishDemo],
   );
 
   const setSpeed = useCallback(
     async (multiplier: number) => {
+      if (dataSource === 'demo') {
+        demoSpeedRef.current = multiplier;
+        publishDemo();
+        return;
+      }
       try {
         const snap = await sendSetSpeed(baseUrl, multiplier);
         setSnapshot(snap);
@@ -162,11 +290,20 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
         setLastError(err instanceof Error ? err.message : String(err));
       }
     },
-    [baseUrl],
+    [baseUrl, dataSource, publishDemo],
   );
 
   const rescoreParetoFront = useCallback(
     async (missionId: string, profile: string) => {
+      if (dataSource === 'demo') {
+        // Re-scoring never re-runs a search: it re-applies the engine's weighted scorer to the
+        // front already captured. That is exactly reproducible here, with the engine's own
+        // profile weights (`services/profileScoring.ts`), so the browser model does it rather
+        // than refusing.
+        demoRescoreRef.current.set(missionId, profile);
+        publishDemo();
+        return;
+      }
       try {
         const snap = await sendRescoreParetoFront(baseUrl, missionId, profile);
         setSnapshot(snap);
@@ -175,11 +312,18 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
         setLastError(err instanceof Error ? err.message : String(err));
       }
     },
-    [baseUrl],
+    [baseUrl, dataSource, publishDemo],
   );
 
   const runAlgorithm = useCallback(
     async (algorithm: RunnableAlgorithm, vehicleId?: string, emergencyId?: string) => {
+      if (dataSource === 'demo') {
+        setLastError(
+          `${algorithm} runs inside the C++ engine. The browser model reports representative ` +
+            'telemetry for the runs already in the snapshot, but cannot execute a new search.',
+        );
+        return false;
+      }
       try {
         const snap = await sendRunAlgorithm(baseUrl, algorithm, vehicleId, emergencyId);
         setSnapshot(snap);
@@ -190,7 +334,7 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
         return false;
       }
     },
-    [baseUrl],
+    [baseUrl, dataSource],
   );
 
   const value = useMemo<EngineContextValue>(
@@ -206,6 +350,7 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
       rescoreParetoFront,
       runAlgorithm,
       lastError,
+      dataSource,
     }),
     [
       baseUrl,
@@ -218,6 +363,7 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
       rescoreParetoFront,
       runAlgorithm,
       lastError,
+      dataSource,
     ],
   );
 

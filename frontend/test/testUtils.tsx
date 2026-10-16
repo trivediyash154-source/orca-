@@ -16,6 +16,7 @@ export function makeContextValue(overrides: Partial<EngineContextValue> = {}): E
     rescoreParetoFront: async () => {},
     runAlgorithm: async () => true,
     lastError: null,
+    dataSource: 'engine',
     ...overrides,
   };
 }

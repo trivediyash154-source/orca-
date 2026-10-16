@@ -1,6 +1,7 @@
 import { useUI, type PageId } from '../../state/UIContext';
 
 const NAV_ITEMS: ReadonlyArray<{ id: PageId; label: string; glyph: string; implemented: boolean }> = [
+  { id: 'overview', label: 'Dashboard', glyph: '▤', implemented: true },
   { id: 'mission-control', label: 'Mission Control', glyph: '◉', implemented: true },
   { id: 'mission-planner', label: 'Mission Planner', glyph: '⌘', implemented: false },
   { id: 'orbital-catalog', label: 'Orbital Catalog', glyph: '✦', implemented: true },

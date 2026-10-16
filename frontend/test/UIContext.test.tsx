@@ -18,13 +18,13 @@ function Probe() {
 }
 
 describe('UIProvider', () => {
-  it('defaults to Mission Control, not presenting, motion not reduced', () => {
+  it('defaults to the Dashboard, not presenting, motion not reduced', () => {
     render(
       <UIProvider>
         <Probe />
       </UIProvider>,
     );
-    expect(screen.getByTestId('page').textContent).toBe('mission-control');
+    expect(screen.getByTestId('page').textContent).toBe('overview');
     expect(screen.getByTestId('presentation').textContent).toBe('false');
     expect(screen.getByTestId('reducedMotion').textContent).toBe('false');
   });
@@ -58,7 +58,7 @@ describe('UIProvider', () => {
         <Sidebar />
       </UIProvider>,
     );
-    expect(screen.getByText('Mission Control').closest('button')).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByText('Dashboard').closest('button')).toHaveAttribute('aria-current', 'page');
   });
 
   describe('reducedMotion honors the OS-level prefers-reduced-motion preference', () => {

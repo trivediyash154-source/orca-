@@ -6,30 +6,33 @@
 
 :root {
   /* --- Surfaces --------------------------------------------------------- */
-  --orca-bg: #05070d;
-  --orca-surface: #0b1119;
-  --orca-surface-elevated: #121a26;
-  --orca-border: #1e2a3a;
-  --orca-border-subtle: #16202c;
+  --orca-bg: #060912;
+  --orca-surface: #0b1120;
+  --orca-surface-elevated: #111a2e;
+  --orca-border: #22304b;
+  --orca-border-subtle: #16213a;
 
   /* --- Text --------------------------------------------------------------- */
-  --orca-text: #e6ecf5;
-  --orca-muted: #7f8fa6;
-  --orca-muted-dim: #5a6a80;
+  --orca-text: #e8eefb;
+  --orca-muted: #8d9dba;
+  --orca-muted-dim: #74859f;
 
   /* --- Semantic status colors ---------------------------------------------
      Used consistently across markers, badges, and text -- never a one-off hex. */
-  --orca-primary: #4a90d6;
-  --orca-success: #45b787;
-  --orca-warning: #d6a344;
-  --orca-critical: #d6544a;
-  --orca-mission-active: #4ac9d6;
-  --orca-orbital-link: #4a90d6;
-  --orca-neutral: #5a6a80;
+  /* The "aurora" family: cyan telemetry, violet missions, amber caution, coral critical. Chosen
+     as one set rather than per role, so a screen full of status reads as one instrument rather
+     than as a stock component library's default blue/green/amber/red. */
+  --orca-primary: #4cc9f0;
+  --orca-success: #2dd4a7;
+  --orca-warning: #f5b544;
+  --orca-critical: #ff5c7a;
+  --orca-mission-active: #9b8cff;
+  --orca-orbital-link: #4cc9f0;
+  --orca-neutral: #66789a;
 
   /* --- Orbital band accents (subtle differentiation, not decoration) ------ */
-  --orca-band-leo: #4fa8ff;
-  --orca-band-meo: #a878ff;
+  --orca-band-leo: #4cc9f0;
+  --orca-band-meo: #9b8cff;
   --orca-band-geo: #ff7ab8;
 
   /* --- Spacing scale -------------------------------------------------------- */
@@ -50,8 +53,11 @@
   --orca-glow-active: 0 0 12px;
 
   /* --- Typography ------------------------------------------------------------ */
-  --orca-font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
-  --orca-font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
+  /* Space Grotesk for interface type and JetBrains Mono for every numeral that is read as a
+     measurement. Both are bundled (`@fontsource-variable/*`), never fetched from a CDN, so the
+     workspace keeps its offline guarantee; the system stacks after them are the fallback. */
+  --orca-font-ui: 'Space Grotesk Variable', -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --orca-font-mono: 'JetBrains Mono Variable', ui-monospace, 'SF Mono', Consolas, monospace;
   --orca-text-xs: 0.72rem;
   --orca-text-sm: 0.82rem;
   --orca-text-md: 0.92rem;
@@ -200,17 +206,18 @@
 
   /* Status and accent colours, darkened until each clears 4.5:1 on the cream surface. The dark
      theme's #4a90d6 measures 2.6:1 here — fine as a marker on black, unreadable as text. */
-  --orca-primary: #1a5c99;          /* 6.8:1 */
-  --orca-success: #1b6b44;          /* 6.4:1 */
-  --orca-warning: #8a5a00;          /* 5.8:1 */
-  --orca-critical: #a32b22;         /* 7.0:1 */
-  --orca-mission-active: #0b6c77;   /* 6.1:1 */
-  --orca-orbital-link: #1a5c99;
+  /* The same aurora family, deepened until each clears 4.5:1 on the cream surface. */
+  --orca-primary: #0b6a8a;          /* 5.9:1 */
+  --orca-success: #0d7258;          /* 5.7:1 */
+  --orca-warning: #8f5300;          /* 5.9:1 */
+  --orca-critical: #b0233f;         /* 6.3:1 */
+  --orca-mission-active: #5a44c2;   /* 6.6:1 */
+  --orca-orbital-link: #0b6a8a;
   --orca-neutral: #6f6355;
 
-  --orca-band-leo: #1a5c99;
-  --orca-band-meo: #5c3f9e;
-  --orca-band-geo: #9c2f66;
+  --orca-band-leo: #0b6a8a;
+  --orca-band-meo: #5a44c2;
+  --orca-band-geo: #a3245f;
 
   /* Elevation comes from shadow, and the shadow is warm-tinted: a neutral grey drop shadow on
      cream reads as dirt. */
@@ -236,4 +243,85 @@
 
   --orca-rescue-signal: #b2451a;
   --orca-focus-ring: #1a5c99;
+}
+
+
+/* ==========================================================================
+   Dark-theme depth tokens
+   --------------------------------------------------------------------------
+   The dark palette above gets its colours right and its SURFACES wrong: every
+   panel was one flat fill over one flat ground, so a console, a card and the
+   page behind them all read at the same depth and the result looked unlit
+   rather than dark.
+
+   Real dark interfaces are not "light with the colours inverted" — they are lit.
+   Three mechanisms do that work here, and all three are tokens so no component
+   paints a literal:
+
+     1. AMBIENT  — two very low-alpha chromatic washes over the ground, so the
+        black is a colour rather than an absence of one. Without this a large
+        dark surface reads as a hole punched in the screen.
+     2. VEIL     — a top-to-bottom white gradient at 3-5% laid over a panel's own
+        fill. This is how elevation is expressed without lightening the token:
+        a raised surface catches more of the imagined light at its top edge.
+     3. EDGE     — a 1px inset highlight along the top edge and a matching dark
+        line along the bottom. It is the single highest-value trick in dark UI:
+        it separates a panel from its ground at any contrast level, including
+        for a reader with a dim display who cannot see the fill difference.
+
+   Every value is deliberately small. Dark design fails in the other direction
+   too: a 12% veil turns a panel grey and the whole surface muddies.
+   ========================================================================== */
+
+:root {
+  /* Ambient wash. Blue above, violet below — the two hues already in the
+     spectral ramp, so the ground belongs to the same palette as the content. */
+  --orca-ambient-cool: rgba(76, 201, 240, 0.1);
+  --orca-ambient-warm: rgba(155, 140, 255, 0.09);
+
+  /* Elevation veils, lightest for the most raised surface. */
+  --orca-veil-high: rgba(255, 255, 255, 0.082);
+  --orca-veil-low: rgba(255, 255, 255, 0.022);
+  --orca-veil-sunken: rgba(0, 0, 0, 0.34);
+
+  /* Edges. */
+  --orca-edge-light: rgba(255, 255, 255, 0.11);
+  --orca-edge-dark: rgba(0, 0, 0, 0.5);
+
+  /* Shadows with real falloff. A single blur at a single alpha reads as a
+     smudge; a tight contact shadow plus a wide ambient one reads as height. */
+  --orca-shadow-raised:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 12px 32px -10px rgba(0, 0, 0, 0.72);
+  --orca-shadow-floating:
+    0 2px 4px rgba(0, 0, 0, 0.5),
+    0 24px 64px -16px rgba(0, 0, 0, 0.8);
+
+  /* Focus glow, used alongside the ring so a focused control is unmistakable
+     on a dark ground without the ring having to get thicker. */
+  --orca-focus-glow: 0 0 0 3px rgba(76, 201, 240, 0.24);
+}
+
+/* The light theme keeps the same token NAMES so every rule below works in both,
+   and gives them light-appropriate values: warm shadow instead of black, a
+   near-invisible veil (paper does not catch a highlight), and ink edges. */
+:root[data-theme='light'] {
+  --orca-ambient-cool: rgba(26, 92, 153, 0.045);
+  --orca-ambient-warm: rgba(138, 90, 0, 0.035);
+
+  --orca-veil-high: rgba(255, 255, 255, 0.7);
+  --orca-veil-low: rgba(255, 255, 255, 0.2);
+  --orca-veil-sunken: rgba(60, 46, 26, 0.045);
+
+  --orca-edge-light: rgba(255, 255, 255, 0.85);
+  --orca-edge-dark: rgba(60, 46, 26, 0.1);
+
+  --orca-shadow-raised:
+    0 1px 2px rgba(60, 46, 26, 0.07),
+    0 8px 24px -10px rgba(60, 46, 26, 0.16);
+  --orca-shadow-floating:
+    0 2px 4px rgba(60, 46, 26, 0.08),
+    0 20px 48px -14px rgba(60, 46, 26, 0.2);
+
+  --orca-focus-glow: 0 0 0 3px rgba(26, 92, 153, 0.18);
 }

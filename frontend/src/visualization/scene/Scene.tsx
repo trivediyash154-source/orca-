@@ -8,6 +8,7 @@ import { OrcaEarth } from '../earth/OrcaEarth';
 import { OrbitRing } from '../orbit/OrbitRing';
 import { EntityMarkerField } from '../satellites/EntityMarkerField';
 import { MissionLink } from '../trajectories/MissionLink';
+import { MissionTags, type MissionTag } from '../trajectories/MissionTags';
 import { ConstellationLayer } from '../constellation/ConstellationLayer';
 import { useVisualConstellation } from '../constellation/useVisualConstellation';
 import { eciToSceneExaggerated } from '../coordinates';
@@ -34,6 +35,46 @@ export interface SceneProps {
 
 const DEFAULT_CAMERA = new Vector3(0, 1.6, 4.2);
 
+/** Where to look from, and at, to show a mission leg. */
+interface MissionFrame {
+  readonly target: Vector3;
+  readonly camera: Vector3;
+}
+
+/** States in which a mission still has a leg worth framing (the engine's `MissionState`). */
+const LIVE_MISSION_STATES = new Set(['LAUNCHED', 'IN_TRANSIT', 'REPLANNING', 'RENDEZVOUS']);
+
+/**
+ * Frames a transfer leg so it reads as the curve it is.
+ *
+ * The previous framing stood the camera on the leg endpoint's radial line. That line lies in the
+ * transfer's own orbital plane (every great-circle plane contains Earth's centre), so the arc was
+ * always seen exactly edge-on and drawn as a straight stroke through the planet: the single most
+ * "broken"-looking thing in Mission Control. The camera now sits 55 degrees out of that plane,
+ * looking at a point between the planet and the arc's midpoint, far enough back to hold both
+ * endpoints and the limb in view.
+ */
+function frameLeg(from: [number, number, number], to: [number, number, number]): MissionFrame {
+  const a = new Vector3(...from);
+  const b = new Vector3(...to);
+  const radius = Math.max(a.length(), b.length());
+  const mid = a.clone().add(b);
+  if (mid.lengthSq() < 1e-9) mid.set(0, 1, 0);
+  mid.normalize();
+
+  const normal = a.clone().cross(b);
+  if (normal.lengthSq() < 1e-9) normal.set(0, 1, 0);
+  normal.normalize();
+
+  const tilt = (55 * Math.PI) / 180;
+  const direction = mid.clone().multiplyScalar(Math.cos(tilt)).add(normal.multiplyScalar(Math.sin(tilt))).normalize();
+
+  return {
+    target: mid.clone().multiplyScalar(radius * 0.45),
+    camera: direction.multiplyScalar(radius * 2.5),
+  };
+}
+
 /** Applies a camera framing action. Kept inside the Canvas because it needs the live
  * `OrbitControls` instance; driven by a nonce from outside (see `SceneProps`). */
 function CameraDirector({
@@ -41,13 +82,13 @@ function CameraDirector({
   nonce,
   target,
   selectedPos,
-  missionPos,
+  missionFrame,
 }: {
   controls: React.RefObject<OrbitControlsImpl>;
   nonce: number;
   target: CameraFocus;
   selectedPos: [number, number, number] | null;
-  missionPos: [number, number, number] | null;
+  missionFrame: MissionFrame | null;
 }) {
   const lastNonce = useRef(0);
   if (nonce !== lastNonce.current && controls.current) {
@@ -56,14 +97,16 @@ function CameraDirector({
     if (target === 'earth') {
       c.target.set(0, 0, 0);
       c.object.position.copy(DEFAULT_CAMERA);
-    } else {
-      const p = target === 'selected' ? selectedPos : missionPos;
-      if (p) {
-        const v = new Vector3(p[0], p[1], p[2]);
-        c.target.copy(v);
-        // Stand off along the object's own radial direction so Earth stays behind it.
-        c.object.position.copy(v.clone().multiplyScalar(1.55).add(new Vector3(0, 0.25, 0)));
+    } else if (target === 'mission') {
+      if (missionFrame) {
+        c.target.copy(missionFrame.target);
+        c.object.position.copy(missionFrame.camera);
       }
+    } else if (selectedPos) {
+      const v = new Vector3(selectedPos[0], selectedPos[1], selectedPos[2]);
+      c.target.copy(v);
+      // Stand off along the object's own radial direction so Earth stays behind it.
+      c.object.position.copy(v.clone().multiplyScalar(1.55).add(new Vector3(0, 0.25, 0)));
     }
     c.update();
   }
@@ -171,10 +214,65 @@ export function Scene({
     return o ? eciToSceneExaggerated(o.position, altitudeExaggeration) : null;
   }, [syntheticSelectedId, constellation.data, altitudeExaggeration]);
 
-  const missionPos = useMemo<[number, number, number] | null>(() => {
-    const leg = snapshot?.missions.find((m) => m.state === 'IN_TRANSIT')?.legs.find((l) => l.status === 'current');
-    return leg ? eciToSceneExaggerated(leg.toPosition, altitudeExaggeration) : null;
+  const missionFrame = useMemo<MissionFrame | null>(() => {
+    if (!snapshot) return null;
+    // A mission the operator selected wins; otherwise the first one still in flight.
+    const mission =
+      (selected?.kind === 'mission' ? snapshot.missions.find((m) => m.id === selected.id) : undefined) ??
+      snapshot.missions.find((m) => LIVE_MISSION_STATES.has(m.state));
+    const leg = mission?.legs.find((l) => l.status === 'current') ?? mission?.legs.at(-1);
+    if (!leg) return null;
+    return frameLeg(
+      eciToSceneExaggerated(leg.fromPosition, altitudeExaggeration),
+      eciToSceneExaggerated(leg.toPosition, altitudeExaggeration),
+    );
+  }, [snapshot, selected, altitudeExaggeration]);
+
+  /** A tag on each live rescue's vehicle and on the rendezvous point at the end of its last leg. */
+  const missionTags = useMemo<MissionTag[]>(() => {
+    if (!snapshot) return [];
+    const tags: MissionTag[] = [];
+    for (const mission of snapshot.missions) {
+      if (mission.completedAtSec !== null) continue;
+      const vehicle = snapshot.rescueVehicles.find((v) => v.id === mission.vehicleId);
+      const emergency = snapshot.emergencies.find((e) => e.id === mission.emergencyId);
+      const target = snapshot.satellites.find((s) => s.id === emergency?.subjectId);
+      const last = mission.legs.at(-1);
+      if (vehicle) {
+        tags.push({
+          id: `${mission.id}-vehicle`,
+          position: eciToSceneExaggerated(vehicle.position, altitudeExaggeration),
+          text: `${vehicle.id} · ${mission.id}`,
+          tone: 'vehicle',
+        });
+      }
+      if (last) {
+        tags.push({
+          id: `${mission.id}-target`,
+          position: eciToSceneExaggerated(last.toPosition, altitudeExaggeration),
+          text: `⌖ ${target?.name ?? last.toEntityId} rendezvous`,
+          tone: 'target',
+        });
+      }
+    }
+    return tags;
   }, [snapshot, altitudeExaggeration]);
+
+  /** Orbit rings for the entities that matter right now — those on a live mission, and the
+   * selection — rather than for every entity at once. Twenty-three full rings drawn together
+   * formed a web across the globe that hid the transfers they were meant to explain. */
+  const ringIds = useMemo(() => {
+    const ids = new Set<string>();
+    if (!snapshot) return ids;
+    for (const mission of snapshot.missions) {
+      if (!LIVE_MISSION_STATES.has(mission.state)) continue;
+      ids.add(mission.vehicleId);
+      const emergency = snapshot.emergencies.find((e) => e.id === mission.emergencyId);
+      if (emergency) ids.add(emergency.subjectId);
+    }
+    if (selected?.kind === 'satellite' || selected?.kind === 'vehicle') ids.add(selected.id);
+    return ids;
+  }, [snapshot, selected]);
 
   const handleConstellationSelect = (id: string) => {
     const obj = [...(constellation.data?.satellites ?? []), ...(constellation.data?.vehicles ?? [])].find(
@@ -219,13 +317,17 @@ export function Scene({
       {snapshot && (
         <>
           {showOrbitRings &&
-            snapshot.satellites.map((sat) => (
-              <OrbitRing key={`orbit-sat-${sat.id}`} orbit={sat.orbit} exaggeration={altitudeExaggeration} />
-            ))}
+            snapshot.satellites
+              .filter((sat) => ringIds.has(sat.id))
+              .map((sat) => (
+                <OrbitRing key={`orbit-sat-${sat.id}`} orbit={sat.orbit} exaggeration={altitudeExaggeration} />
+              ))}
           {showOrbitRings &&
-            snapshot.rescueVehicles.map((v) => (
-              <OrbitRing key={`orbit-veh-${v.id}`} orbit={v.orbit} exaggeration={altitudeExaggeration} />
-            ))}
+            snapshot.rescueVehicles
+              .filter((v) => ringIds.has(v.id))
+              .map((v) => (
+                <OrbitRing key={`orbit-veh-${v.id}`} orbit={v.orbit} exaggeration={altitudeExaggeration} />
+              ))}
 
           <EntityMarkerField
             items={satelliteItems}
@@ -242,12 +344,17 @@ export function Scene({
             exaggeration={altitudeExaggeration}
           />
 
+          {/* Only rescues still in flight: finished missions' legs piled up as grey arcs around
+              the planet over a long run and buried the one transfer that mattered. */}
           {showTrajectories &&
-            snapshot.missions.flatMap((mission) =>
-              mission.legs.map((leg, i) => (
-                <MissionLink key={`${mission.id}-leg-${i}`} leg={leg} exaggeration={altitudeExaggeration} />
-              )),
-            )}
+            snapshot.missions
+              .filter((mission) => mission.completedAtSec === null)
+              .flatMap((mission) =>
+                mission.legs.map((leg, i) => (
+                  <MissionLink key={`${mission.id}-leg-${i}`} leg={leg} exaggeration={altitudeExaggeration} />
+                )),
+              )}
+          {showTrajectories && <MissionTags tags={missionTags} />}
         </>
       )}
 
@@ -256,7 +363,7 @@ export function Scene({
         nonce={focusNonce}
         target={focusTarget}
         selectedPos={selectedPos ?? syntheticPos}
-        missionPos={missionPos}
+        missionFrame={missionFrame}
       />
       <OrbitControls ref={controlsRef} enablePan minDistance={1.2} maxDistance={30} />
     </Canvas>

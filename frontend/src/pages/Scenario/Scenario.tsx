@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { ConstellationScene } from '../../visualization/constellation/ConstellationScene';
 import { ProximityLegend } from '../../visualization/constellation/ProximityLegend';
 import { useEngine } from '../../state/EngineContext';
+import { demoVisualConstellation } from '../../services/demoConstellation';
 import { fetchVisualConstellation, type ScenarioFamily } from '../../services/engineService';
 import type { VisualConstellationSnapshot, VisualObjectView } from '../../types/engine';
 
@@ -32,7 +33,7 @@ const SIZE_PRESETS = [
  * honest") -- generating a large constellation here never touches the live mission session
  * `Mission Control` is driving. */
 export function ScenarioPage() {
-  const { snapshot, baseUrl } = useEngine();
+  const { snapshot, baseUrl, dataSource } = useEngine();
 
   const [family, setFamily] = useState<ScenarioFamily>('dense');
   const [size, setSize] = useState(2000);
@@ -60,7 +61,10 @@ export function ScenarioPage() {
     setSelectedId(null);
     const clientStart = performance.now();
     try {
-      const data = await fetchVisualConstellation(baseUrl, family, size, seed, 0);
+      const data =
+        dataSource === 'demo'
+          ? demoVisualConstellation(size, seed, 0, family)
+          : await fetchVisualConstellation(baseUrl, family, size, seed, 0);
       setConstellation(data);
       setLastFetchMs(performance.now() - clientStart);
     } catch (err) {

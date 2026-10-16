@@ -1,0 +1,34 @@
+{
+  "name": "orca-frontend",
+  "version": "0.9.0",
+  "private": true,
+  "type": "module",
+  "description": "ORCA React + Three.js shell -- displays real C++ engine state via the Node bridge. Never computes a value the engine could compute (docs/ARCHITECTURE.md #6.1).",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@react-three/drei": "^9.114.3",
+    "@react-three/fiber": "^8.17.10",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "satellite.js": "^5.0.0",
+    "three": "^0.169.0"
+  },
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.1",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@types/three": "^0.169.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "jsdom": "^25.0.0",
+    "typescript": "^5.5.4",
+    "vite": "^5.4.6",
+    "vitest": "^2.0.5"
+  }
+}

@@ -1,0 +1,20 @@
+ORCA Phase 6 micro-benchmark: Hungarian assignment
+
+Part 1: solveSquareAssignment() raw scaling (random cost matrices)
+N          MedianMs   OperationCnt     MeanMs
+2           0.00079              4    0.00081
+5           0.00121             29    0.00127
+10          0.00246            223    0.00251
+20          0.00583           1049    0.00599
+50          0.03533          10506    0.03603
+100         0.14421          50506    0.15139
+
+Part 2: integrated pipeline, timed stage by stage (median of 7 runs, 2 warm-up)
+VxE          CandidateGen    Scoring  CostAndMatrix      Hungarian    TotalMs
+2x2               0.01192    0.00104        0.00283        0.00150    0.01729
+3x3               0.02529    0.00187        0.00400        0.00183    0.03300
+5x5               0.07467    0.00504        0.00750        0.00337    0.09058
+8x8               0.21863    0.01350        0.01496        0.00713    0.25421
+10x10             0.38646    0.01983        0.02113        0.01063    0.43804
+
+Note: candidate generation runs one Pareto search per (vehicle, emergency) pair -- O(V*E) searches, each independently O(graph size); Hungarian on the padded (V+E)x(V+E) matrix is O((V+E)^3) but operates on a tiny matrix at these scenario sizes. Whichever stage actually dominates at each size is read directly from the columns above, not assumed in advance.

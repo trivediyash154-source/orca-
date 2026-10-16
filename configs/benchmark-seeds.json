@@ -1,0 +1,28 @@
+{
+  "$comment": [
+    "Fixed seed list for the benchmark protocol (BENCHMARK_PLAN.md §2.2).",
+    "Committed BEFORE any benchmark run, so seeds cannot be selected after seeing results.",
+    "This is a threat-to-validity mitigation (BENCHMARK_PLAN.md §9), not a convenience.",
+    "Every strategy is evaluated on the identical seeded scenario, which is what makes the",
+    "paired statistical comparison in §7.4 valid."
+  ],
+  "schemaVersion": 1,
+  "count": 30,
+  "seeds": [
+    928371, 104729, 224737, 350377, 479909,
+    611953, 746773, 882377, 1020379, 1159523,
+    1300537, 1442968, 1587791, 1734479, 1882277,
+    2032079, 2183507, 2336497, 2490529, 2646011,
+    2802181, 2960287, 3119459, 3280343, 3442369,
+    3605537, 3769669, 3934819, 4100977, 4268047
+  ],
+  "demoSeed": 928371,
+  "protocol": {
+    "warmupIterations": 3,
+    "measuredRepetitions": 10,
+    "reportedStatistic": "median",
+    "alsoReported": ["mean", "stddev", "p95", "min", "max"],
+    "sizes": [25, 50, 100, 250, 500, 1000],
+    "composition": { "satellites": 0.80, "rescueVehicles": 0.08, "debris": 0.12 }
+  }
+}

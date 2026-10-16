@@ -1,0 +1,629 @@
+/**
+ * Narrative section bodies: the problem ledger and the planning pipeline
+ * (.mk-problem-*, .mk-pipeline-*, .mk-figure-*, .mk-flow-*).
+ *
+ * Two structural commitments run through this file.
+ *
+ * 1. **Rules, not boxes.** Related items are separated by hairlines and aligned to a shared
+ *    grid rather than wrapped in rounded panels. Three cards say "three features"; three ruled
+ *    columns say "three parts of one statement", which is what the copy actually claims.
+ * 2. **Figures are geometry, never text.** Every inline SVG here is decorative-structural and
+ *    carries `aria-hidden`; the words are HTML beside them. A diagram that holds the only copy
+ *    of a label cannot be selected, translated, searched or read aloud.
+ */
+
+/* ==========================================================================
+   Problem
+   ========================================================================== */
+
+.mk-problem__statement {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+  gap: var(--orca-space-7);
+  align-items: start;
+}
+
+.mk-problem__statement-copy p {
+  margin: 0 0 var(--orca-space-4);
+  max-width: 60ch;
+  color: var(--orca-muted);
+}
+
+.mk-problem__statement-copy p:last-child {
+  margin-bottom: 0;
+}
+
+.mk-problem__definition {
+  margin: 0;
+}
+
+.mk-problem__definition-row {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: var(--orca-space-4);
+  padding-block: var(--orca-space-3);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-problem__definition-row:last-child {
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-problem__definition dt {
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted);
+}
+
+.mk-problem__definition dd {
+  margin: 0;
+  font-size: var(--orca-text-sm);
+  line-height: 1.55;
+  color: var(--orca-muted);
+}
+
+/* --- The ledger -----------------------------------------------------------
+   Full-bleed rules with the columns held to a readable measure inside them: at 2560px an
+   uncapped three-column grid gives each entry an 800px line, which no one reads. */
+
+.mk-problem__ledger {
+  margin-top: var(--orca-space-8);
+  padding-block: var(--orca-space-6);
+  padding-inline: clamp(var(--orca-space-4), 4.5vw, var(--orca-space-8));
+  border-block: 1px solid var(--orca-hairline);
+}
+
+.mk-problem__ledger-label {
+  max-width: 1680px;
+  margin: 0 auto var(--orca-space-6);
+  font-size: var(--orca-text-xs);
+  font-weight: 400;
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted);
+}
+
+.mk-problem__ledger-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  max-width: 1680px;
+  margin-inline: auto;
+}
+
+.mk-problem__entry {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--orca-space-3);
+  padding-inline: var(--orca-space-6);
+  border-left: 1px solid var(--orca-hairline);
+}
+
+.mk-problem__entry:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.mk-problem__entry-index {
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  color: var(--orca-muted-dim);
+}
+
+.mk-problem__entry-title {
+  margin: 0;
+  font-size: var(--orca-display-3);
+  line-height: 1.18;
+  letter-spacing: var(--orca-tracking-display);
+  font-weight: 600;
+  color: var(--orca-text);
+  text-wrap: balance;
+}
+
+.mk-problem__entry-body {
+  margin: 0;
+  font-size: var(--orca-text-sm);
+  line-height: 1.6;
+  color: var(--orca-muted);
+}
+
+/* --- Constraint figures ---------------------------------------------------
+   One stroke weight for structure, one for the thing being described. Spectral colour appears
+   only on the element that carries the claim -- the vehicle's last fix, the transfer arc, the
+   path that was actually flown. */
+
+.mk-figure {
+  display: block;
+  width: 100%;
+  max-width: 220px;
+  height: auto;
+  margin-block: var(--orca-space-2);
+}
+
+.mk-figure__orbit {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+}
+
+.mk-figure__node {
+  fill: var(--orca-spectral-1);
+}
+
+.mk-figure__node-open {
+  fill: none;
+  stroke: var(--orca-spectral-1);
+  stroke-width: 1.2;
+}
+
+.mk-figure__uncertain {
+  stroke: var(--orca-spectral-2);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.8;
+}
+
+.mk-figure__tick {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+}
+
+.mk-figure__transfer {
+  stroke: var(--orca-spectral-1);
+  stroke-width: 1.4;
+}
+
+.mk-figure__phase {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 3;
+}
+
+.mk-figure__phase-arc {
+  stroke: var(--orca-spectral-5);
+  stroke-width: 1.3;
+}
+
+.mk-figure__grid path {
+  stroke: var(--orca-hairline);
+  stroke-width: 1;
+}
+
+.mk-figure__occupied rect {
+  fill: color-mix(in srgb, var(--orca-rescue-signal) 24%, transparent);
+  stroke: color-mix(in srgb, var(--orca-rescue-signal) 58%, transparent);
+  stroke-width: 1;
+}
+
+.mk-figure__chord {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+/* --- Pull figure ---------------------------------------------------------- */
+
+.mk-problem__pull {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr);
+  gap: var(--orca-space-3) var(--orca-space-7);
+  margin: var(--orca-space-8) 0 0;
+  padding-top: var(--orca-space-6);
+  border-top: 1px solid var(--orca-hairline-strong);
+}
+
+.mk-problem__pull-value {
+  grid-row: 1 / span 2;
+  display: flex;
+  align-items: baseline;
+  gap: var(--orca-space-2);
+}
+
+.mk-problem__pull-number {
+  font-size: clamp(3rem, 6.5vw, 5rem);
+  line-height: 0.86;
+  letter-spacing: -0.03em;
+  color: var(--orca-spectral-1);
+}
+
+.mk-problem__pull-unit {
+  font-size: var(--orca-text-sm);
+  text-transform: uppercase;
+  color: var(--orca-muted);
+}
+
+.mk-problem__pull-body {
+  grid-column: 2;
+  margin: 0;
+  max-width: 62ch;
+  font-size: var(--orca-lede);
+  line-height: 1.6;
+  color: var(--orca-text);
+}
+
+.mk-problem__pull-source {
+  grid-column: 2;
+  font-size: var(--orca-text-xs);
+  line-height: 1.6;
+  color: var(--orca-muted);
+}
+
+/* ==========================================================================
+   Pipeline
+   ========================================================================== */
+
+.mk-pipeline__layout {
+  display: grid;
+  grid-template-columns: minmax(0, 320px) minmax(0, 1fr);
+  gap: var(--orca-space-7);
+  align-items: start;
+}
+
+.mk-pipeline__stages {
+  position: relative;
+  margin: var(--orca-space-4) 0 0;
+  padding: 0;
+  list-style: none;
+  border-left: 1px solid var(--orca-hairline);
+}
+
+/* The rail's own progress: a lit segment whose height is the selected stage's position in the
+   sequence, so the rail reports where the reader is without a second widget. */
+.mk-pipeline__stages::before {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  width: 1px;
+  height: calc(var(--mk-pipeline-progress, 0) * 100%);
+  background: linear-gradient(var(--orca-spectral-1), var(--orca-spectral-3));
+  transition: height var(--orca-dur-med) var(--orca-ease);
+}
+
+.mk-pipeline__stage {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--orca-space-3);
+  width: 100%;
+  padding: var(--orca-space-3) var(--orca-space-4);
+  border: 0;
+  background: none;
+  color: var(--orca-muted);
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition:
+    color var(--orca-dur-fast) var(--orca-ease),
+    background-color var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-pipeline__stage:hover {
+  color: var(--orca-text);
+  background: color-mix(in srgb, var(--orca-void-raised) 60%, transparent);
+}
+
+.mk-pipeline__stage.is-selected {
+  color: var(--orca-text);
+  background: color-mix(in srgb, var(--orca-void-raised) 88%, transparent);
+}
+
+.mk-pipeline__stage-index {
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  color: var(--orca-muted-dim);
+  padding-top: 0.2rem;
+}
+
+.mk-pipeline__stage.is-selected .mk-pipeline__stage-index {
+  color: var(--orca-spectral-1);
+}
+
+.mk-pipeline__stage-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orca-space-1);
+  min-width: 0;
+}
+
+.mk-pipeline__stage-title {
+  font-size: var(--orca-text-md);
+  line-height: 1.3;
+}
+
+.mk-pipeline__stage-tag {
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Detail panel --------------------------------------------------------- */
+
+.mk-pipeline__panel {
+  padding: var(--orca-space-6);
+  border: 1px solid var(--orca-hairline);
+  background: color-mix(in srgb, var(--orca-void-raised) 70%, transparent);
+}
+
+.mk-pipeline__panel-body {
+  animation: mk-pipeline-swap var(--orca-dur-med) var(--orca-ease) both;
+}
+
+.mk-pipeline__panel-head {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orca-space-2);
+}
+
+.mk-pipeline__panel-step {
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-pipeline__panel-title {
+  margin: 0;
+  font-size: var(--orca-display-3);
+  line-height: 1.15;
+  letter-spacing: var(--orca-tracking-display);
+  font-weight: 600;
+  color: var(--orca-text);
+}
+
+.mk-pipeline__panel-text {
+  margin: 0;
+  max-width: 68ch;
+  color: var(--orca-muted);
+}
+
+/* --- Flow ----------------------------------------------------------------- */
+
+.mk-pipeline__flow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 300px) minmax(0, 1fr);
+  gap: var(--orca-space-5);
+  align-items: center;
+  margin-top: var(--orca-space-6);
+  padding-top: var(--orca-space-5);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-pipeline__io-list {
+  margin: var(--orca-space-3) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mk-pipeline__io-item {
+  padding-block: var(--orca-space-2);
+  border-top: 1px solid var(--orca-hairline);
+  font-size: var(--orca-text-sm);
+  color: var(--orca-text);
+}
+
+.mk-pipeline__io-item:last-child {
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-pipeline__output {
+  margin: var(--orca-space-3) 0 0;
+  padding-block: var(--orca-space-2);
+  border-top: 1px solid color-mix(in srgb, var(--orca-spectral-1) 45%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--orca-spectral-1) 45%, transparent);
+  font-size: var(--orca-text-sm);
+  color: var(--orca-text);
+}
+
+.mk-flow {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.mk-flow__edge {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1.2;
+  stroke-dasharray: 4 6;
+  animation: mk-flow-run 1.6s linear infinite;
+}
+
+.mk-flow__edge--out {
+  stroke: var(--orca-spectral-1);
+}
+
+.mk-flow__edge.is-feedback {
+  stroke: var(--orca-hairline);
+  animation-duration: 3.4s;
+}
+
+/* Lit only on the replan stage: the loop is always drawn, because it is always part of the
+   architecture, but it is only the subject when that stage is selected. */
+.mk-flow__edge.is-feedback.is-live {
+  stroke: var(--orca-spectral-3);
+}
+
+.mk-flow__node {
+  fill: var(--orca-spectral-2);
+}
+
+.mk-flow__node--out {
+  fill: none;
+  stroke: var(--orca-spectral-1);
+  stroke-width: 1.4;
+}
+
+.mk-flow__core {
+  fill: color-mix(in srgb, var(--orca-spectral-2) 18%, transparent);
+  stroke: var(--orca-spectral-1);
+  stroke-width: 1.4;
+}
+
+.mk-flow__core-ring {
+  stroke: var(--orca-hairline);
+  stroke-width: 1;
+  stroke-dasharray: 2 5;
+  transform-box: view-box;
+  transform-origin: 150px 105px;
+  animation: mk-flow-scan 22s linear infinite;
+}
+
+.mk-pipeline__loop {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--orca-space-3);
+  margin: var(--orca-space-5) 0 0;
+  padding-top: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+  font-size: var(--orca-text-sm);
+  line-height: 1.6;
+  color: var(--orca-muted);
+}
+
+/* Off-canvas rather than display:none -- a live region that is not rendered is not announced. */
+.mk-pipeline__announce {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes mk-flow-run {
+  to {
+    stroke-dashoffset: -20;
+  }
+}
+
+@keyframes mk-flow-scan {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes mk-pipeline-swap {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* ==========================================================================
+   Breakpoints
+   ========================================================================== */
+
+@media (max-width: 1200px) {
+  .mk-pipeline__layout {
+    grid-template-columns: minmax(0, 280px) minmax(0, 1fr);
+    gap: var(--orca-space-6);
+  }
+}
+
+@media (max-width: 1020px) {
+  .mk-problem__statement {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--orca-space-6);
+  }
+
+  .mk-pipeline__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mk-pipeline__flow {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 260px) minmax(0, 1fr);
+    gap: var(--orca-space-4);
+  }
+}
+
+@media (max-width: 800px) {
+  .mk-problem__ledger-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .mk-problem__entry {
+    padding: var(--orca-space-6) 0 0;
+    border-left: 0;
+    border-top: 1px solid var(--orca-hairline);
+  }
+
+  .mk-problem__entry:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  .mk-problem__pull {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--orca-space-4);
+  }
+
+  .mk-problem__pull-value {
+    grid-row: auto;
+  }
+
+  .mk-problem__pull-body,
+  .mk-problem__pull-source {
+    grid-column: 1;
+  }
+
+  .mk-pipeline__panel {
+    padding: var(--orca-space-5) var(--orca-space-4);
+  }
+
+  .mk-pipeline__flow {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: stretch;
+  }
+
+  .mk-flow {
+    max-width: 320px;
+    margin-inline: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .mk-problem__definition-row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--orca-space-1);
+  }
+}
+
+@media (max-width: 380px) {
+  .mk-pipeline__stage {
+    padding-inline: var(--orca-space-3);
+  }
+}
+
+/* ==========================================================================
+   Reduced motion
+   Movement is removed; state is not. The rail's progress rule keeps its height, the flow edges
+   keep their dashes, and the panel keeps its content -- only the travelling and the swapping
+   stop.
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-pipeline__stages::before {
+    transition: none;
+  }
+
+  .mk-pipeline__stage {
+    transition: none;
+  }
+
+  .mk-pipeline__panel-body {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .mk-flow__edge,
+  .mk-flow__core-ring {
+    animation: none;
+  }
+}

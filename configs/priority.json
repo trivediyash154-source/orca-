@@ -1,0 +1,27 @@
+{
+  "$comment": [
+    "Emergency priority weights (OPTIMIZATION_MODEL.md §7). Distinct from",
+    "configs/profiles.json's weights: priority decides WHICH casualty to serve,",
+    "profile weights decide WHICH route to fly. priority = w_s*severityScore +",
+    "w_u*urgency + w_f*feasibilityScore, each term in [0,1], so priority is in [0,1].",
+    "Created in Phase 6 -- the first phase that actually computes priority; the",
+    "formula and these exact defaults were already specified in OPTIMIZATION_MODEL.md",
+    "§7 in Phase 0, but no config file existed to back them until now."
+  ],
+  "schemaVersion": 1,
+  "weights": {
+    "severity": 0.4,
+    "urgency": 0.4,
+    "feasibility": 0.2
+  },
+  "severityScores": {
+    "LOW": 0.25,
+    "MODERATE": 0.5,
+    "HIGH": 0.75,
+    "CRITICAL": 1.0
+  },
+  "feasibilityScores": {
+    "feasiblePlanExists": 1.0,
+    "noFeasiblePlanExists": 0.2
+  }
+}

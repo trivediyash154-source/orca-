@@ -1,0 +1,494 @@
+/**
+ * The page's outer furniture: the mission strip under the hero, the access band that closes
+ * the page, and the site footer (.mk-mission-strip, .mk-access-*, .mk-footer-*).
+ *
+ * The access backdrop is drawn with CSS and SVG geometry rather than an image, so it stays
+ * sharp at 2560px and costs no request. Its four shells are hairlines — structure, not
+ * emphasis — and the single spectral element is the transfer arc between two of them, which
+ * earns the ramp by encoding the one thing the engine computes. Colour never reaches the SVG
+ * markup: every stroke, fill and gradient stop below is set from a token here.
+ */
+
+/* --- Mission strip --------------------------------------------------------
+   A ruled band, not a section: one line of domain terms at telemetry scale, bounded top and
+   bottom so it reads as a caption to the hero rather than as content of its own. */
+
+.mk-mission-strip {
+  border-block: 1px solid var(--orca-hairline);
+  background: color-mix(in srgb, var(--orca-void-raised) 55%, transparent);
+}
+
+.mk-mission-strip__list {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--orca-space-2) var(--orca-space-5);
+  margin: 0;
+  padding: var(--orca-space-4) 0;
+  list-style: none;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-mission-strip__item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--orca-space-5);
+}
+
+/* A ruled tick between terms rather than a bullet: at this size a middot reads as noise, and
+   a vertical hairline keeps the instrumentation register. */
+.mk-mission-strip__item + .mk-mission-strip__item::before {
+  content: '';
+  display: block;
+  width: 1px;
+  height: 0.85em;
+  background: var(--orca-hairline-strong);
+}
+
+/* --- Access band ----------------------------------------------------------
+   `overflow: clip` on both axes contains the backdrop without creating a scroll container, so
+   the sticky nav above is unaffected (see the note at the top of base.css). */
+
+.mk-access {
+  position: relative;
+  overflow: clip;
+  padding-bottom: calc(var(--orca-space-9) + var(--orca-space-6));
+}
+
+.mk-access__backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.mk-access-arcs {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mk-access__shell {
+  position: relative;
+  z-index: 1;
+}
+
+/* The close is the page's second and last full-scale statement; the hero opens at this size
+   and the access band answers it. Every other heading stays at display-2. */
+.mk-access .mk-section-title {
+  font-size: var(--orca-display-1);
+  line-height: 1.02;
+  max-width: 18ch;
+}
+
+.mk-access__title-lead {
+  display: block;
+  color: var(--orca-muted);
+}
+
+/* --- Backdrop geometry ----------------------------------------------------
+   Shells are drawn at three depths so the composition has a foreground and a distance without
+   any blur or shadow: opacity alone carries the recession. */
+
+.mk-access-arcs__ring {
+  fill: none;
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+}
+
+.mk-access-arcs__ring--near {
+  opacity: 0.9;
+}
+
+.mk-access-arcs__ring--mid {
+  opacity: 0.55;
+}
+
+.mk-access-arcs__ring--far {
+  opacity: 0.3;
+}
+
+.mk-access-arcs__body {
+  fill: color-mix(in srgb, var(--orca-spectral-2) 14%, transparent);
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+}
+
+.mk-access-arcs__stop--1 {
+  stop-color: var(--orca-spectral-1);
+}
+
+.mk-access-arcs__stop--2 {
+  stop-color: var(--orca-spectral-3);
+}
+
+.mk-access-arcs__stop--3 {
+  stop-color: var(--orca-spectral-5);
+}
+
+.mk-access-arcs__transfer {
+  fill: none;
+  stroke: url(#mk-access-ramp);
+  stroke-width: 1.6;
+  opacity: 0.85;
+}
+
+/* The travelling segment is the only moving thing in the band. It runs the length of the
+   transfer once every nine seconds: slow enough to read as traversal rather than as a loading
+   indicator. Dash pattern and offset must stay in sync — 34 + 460 is the animation's period. */
+.mk-access-arcs__spark {
+  fill: none;
+  stroke: var(--orca-spectral-6);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-dasharray: 34 460;
+  animation: mk-access-spark 9s linear infinite;
+}
+
+.mk-access-arcs__node {
+  fill: var(--orca-spectral-1);
+  opacity: 0.85;
+}
+
+@keyframes mk-access-spark {
+  from {
+    stroke-dashoffset: 494;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* --- Access panel ---------------------------------------------------------
+   Actions and the honesty note sit side by side on a wide viewport: the note is not fine
+   print appended after the call to action, it is the other half of it. */
+
+.mk-access__panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--orca-space-6);
+  padding-top: var(--orca-space-6);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-access__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--orca-space-4);
+}
+
+.mk-access__quiet-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--orca-space-3);
+  margin: 0;
+}
+
+.mk-access__quiet-lead {
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+/* The lead-in and the control share one typographic register, so the control is raised a step
+   above it. Left at the quiet default they read as one sentence and the only clickable words
+   in the band become invisible as controls. */
+.mk-access__actions .mk-action--quiet {
+  color: var(--orca-text);
+}
+
+.mk-access__note {
+  padding: var(--orca-space-5);
+  border: 1px solid var(--orca-hairline);
+  background: var(--orca-glass);
+  backdrop-filter: blur(6px);
+}
+
+.mk-access__note-status {
+  display: flex;
+  align-items: center;
+  gap: var(--orca-space-3);
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted);
+}
+
+.mk-access__note-body {
+  margin: var(--orca-space-4) 0 0;
+  max-width: 62ch;
+  font-size: var(--orca-text-sm);
+  line-height: 1.62;
+  color: var(--orca-muted);
+}
+
+.mk-access__note-source {
+  margin: var(--orca-space-3) 0 0;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+}
+
+@media (min-width: 900px) {
+  .mk-access__panel {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+    gap: var(--orca-space-8);
+    align-items: start;
+  }
+}
+
+/* --- Footer ---------------------------------------------------------------
+   Ruled off from the access band and set a step quieter: the footer is a directory, and it
+   should not compete with the close immediately above it. */
+
+.mk-footer {
+  position: relative;
+  z-index: 1;
+  border-top: 1px solid var(--orca-hairline-strong);
+  background: color-mix(in srgb, var(--orca-void-raised) 62%, transparent);
+  padding-block: var(--orca-space-8) var(--orca-space-5);
+}
+
+.mk-footer__top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--orca-space-7);
+}
+
+.mk-footer__brand {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--orca-space-4);
+  min-width: 0;
+}
+
+.mk-footer__product {
+  margin: 0;
+  max-width: 34ch;
+  font-size: var(--orca-text-sm);
+  line-height: 1.5;
+  color: var(--orca-text);
+}
+
+.mk-footer__brand-note {
+  margin: 0;
+  max-width: 46ch;
+  font-size: var(--orca-text-sm);
+  line-height: 1.6;
+  color: var(--orca-muted);
+}
+
+.mk-footer-column {
+  min-width: 0;
+}
+
+.mk-footer-column__title {
+  margin: 0 0 var(--orca-space-4);
+  font-size: var(--orca-text-xs);
+  font-weight: 500;
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-footer-column__list {
+  display: grid;
+  gap: var(--orca-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* One rule for both the anchors and the buttons in these columns: they look identical because
+   they do the same job, and the element differs only because a section is a location and a
+   route change is an action. */
+.mk-footer-link {
+  display: inline-block;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  font-size: var(--orca-text-sm);
+  line-height: 1.4;
+  text-align: left;
+  text-decoration: none;
+  color: var(--orca-muted);
+  cursor: pointer;
+  transition: color var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-footer-link:hover {
+  color: var(--orca-text);
+  text-decoration: underline;
+  text-underline-offset: 0.28em;
+  text-decoration-thickness: 1px;
+}
+
+/* --- Architecture ---------------------------------------------------------
+   The three levels the README names, with the one-word role it gives each. Laid out as a
+   ruled table rather than as cards: it is a fact about the system, not a feature list. */
+
+.mk-footer-architecture {
+  margin-top: var(--orca-space-7);
+  padding-top: var(--orca-space-5);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-footer-architecture__list {
+  display: grid;
+  gap: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mk-footer-architecture__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--orca-space-1);
+  padding-block: var(--orca-space-3);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-footer-architecture__item:first-child {
+  border-top: 0;
+}
+
+.mk-footer-architecture__level {
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-footer-architecture__name {
+  font-size: var(--orca-text-sm);
+  color: var(--orca-text);
+}
+
+.mk-footer-architecture__stack {
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted);
+}
+
+.mk-footer-architecture__role {
+  font-size: var(--orca-text-sm);
+  font-style: italic;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Bottom bar ----------------------------------------------------------- */
+
+.mk-footer__bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orca-space-4);
+  margin-top: var(--orca-space-7);
+  padding-top: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-footer__legal {
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+}
+
+.mk-footer__top-link {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--orca-space-2);
+  padding: var(--orca-space-2) 0;
+  border: 0;
+  background: none;
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted);
+  cursor: pointer;
+  transition: color var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-footer__top-link:hover {
+  color: var(--orca-text);
+}
+
+.mk-footer__top-arrow {
+  flex: none;
+  transition: transform var(--orca-dur-med) var(--orca-ease);
+}
+
+.mk-footer__top-link:hover .mk-footer__top-arrow {
+  transform: translateY(-2px);
+}
+
+@media (min-width: 860px) {
+  .mk-footer__top {
+    grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr) minmax(0, 1fr);
+    gap: var(--orca-space-8);
+  }
+
+  /* The role follows the stack immediately rather than being flushed to the far right by a
+     `1fr` stack column: "the eyes" belongs to "React - TypeScript - Three.js", and 600px of
+     empty space between them breaks that reading. */
+  .mk-footer-architecture__item {
+    grid-template-columns: 6rem minmax(0, 11rem) minmax(0, 20rem) minmax(0, 1fr);
+    gap: var(--orca-space-5);
+    align-items: baseline;
+  }
+}
+
+/* --- Narrow viewports -----------------------------------------------------
+   At 360px the backdrop is dropped back so it can never reduce contrast behind the closing
+   statement; the geometry is decoration and the statement is not. */
+
+@media (max-width: 720px) {
+  .mk-access__backdrop {
+    opacity: 0.45;
+  }
+
+  .mk-access .mk-section-title {
+    max-width: none;
+  }
+
+  .mk-access__note {
+    padding: var(--orca-space-4);
+  }
+}
+
+/* --- Reduced motion -------------------------------------------------------
+   The travelling segment is parked mid-arc rather than removed: the arc still reads as a
+   transfer with a vehicle on it, and nothing disappears. The class is applied by
+   `AccessSection` from `usePrefersReducedMotion()`; the media query repeats the rule for the
+   case where the class has not been applied yet on first paint. */
+
+.mk-access__backdrop--static .mk-access-arcs__spark {
+  animation: none;
+  stroke-dashoffset: 200;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-access-arcs__spark {
+    animation: none;
+    stroke-dashoffset: 200;
+  }
+
+  .mk-footer-link,
+  .mk-footer__top-link,
+  .mk-footer__top-arrow {
+    transition: none;
+  }
+
+  .mk-footer__top-link:hover .mk-footer__top-arrow {
+    transform: none;
+  }
+}

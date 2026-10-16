@@ -1,0 +1,43 @@
+{
+  "$comment": [
+    "Preference profiles for STAGE 2 selection (OPTIMIZATION_MODEL.md §6).",
+    "These weight a already-computed Pareto front; they never affect the search.",
+    "Weights are normalised to sum to 1 internally, so only ratios matter.",
+    "Note that even FASTEST keeps a non-zero risk weight: a profile that zeroes an",
+    "objective selects an extreme point that may be absurd on the ignored axis.",
+    "Adding a profile here requires no code change."
+  ],
+  "schemaVersion": 1,
+  "profiles": {
+    "FASTEST": {
+      "label": "Fastest",
+      "description": "Minimise rescue time. Retains a risk floor so the selection is not reckless.",
+      "weights": { "time": 0.70, "fuel": 0.10, "risk": 0.15, "distance": 0.05 }
+    },
+    "FUEL_SAVING": {
+      "label": "Fuel Saving",
+      "description": "Preserve vehicle delta-v budget for subsequent missions.",
+      "weights": { "time": 0.10, "fuel": 0.70, "risk": 0.15, "distance": 0.05 }
+    },
+    "SAFETY_FIRST": {
+      "label": "Safety First",
+      "description": "Minimise route risk, accepting longer transfers.",
+      "weights": { "time": 0.15, "fuel": 0.10, "risk": 0.70, "distance": 0.05 }
+    },
+    "BALANCED": {
+      "label": "Balanced",
+      "description": "Default profile. Equal emphasis on time, fuel and risk.",
+      "weights": { "time": 0.30, "fuel": 0.30, "risk": 0.30, "distance": 0.10 }
+    },
+    "CUSTOM": {
+      "label": "Custom",
+      "description": "Operator-defined. Initial values are uniform; overridden by the sliders.",
+      "weights": { "time": 0.25, "fuel": 0.25, "risk": 0.25, "distance": 0.25 }
+    }
+  },
+  "defaultProfile": "BALANCED",
+  "tieBreaking": {
+    "$comment": "Applied in order until a unique winner remains. planId is unique, making the order total (OPTIMIZATION_MODEL.md §10).",
+    "order": ["score", "risk", "time", "fuel", "planId"]
+  }
+}

@@ -1,0 +1,31 @@
+# Build
+build/
+build-direct/
+cmake-build-*/
+_deps/
+CMakeCache.txt
+CMakeFiles/
+compile_commands.json
+.catalog-cache/
+
+# Node
+node_modules/
+dist/
+.vite/
+*.tsbuildinfo
+
+# Benchmark output — results are committed deliberately and selectively,
+# not swept in wholesale. See BENCHMARK_PLAN.md §10.
+benchmarks/*.csv
+benchmarks/*.json
+benchmarks/figures/
+!benchmarks/.gitkeep
+
+# Editor / OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Logs
+*.log

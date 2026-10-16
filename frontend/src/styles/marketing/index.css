@@ -1,0 +1,24 @@
+/**
+ * Entry-surface stylesheet index. Kept entirely separate from `app.css`, which owns the
+ * 1469-line workspace shell and generic class names like `.brand` and `.top-bar`; every rule
+ * reachable from here is namespaced `mk-` (landing) or `mk-auth-` (authentication) so the two
+ * surfaces can never collide.
+ *
+ * Import order is load-bearing: `base.css` establishes the shared primitives (shell, section
+ * rhythm, buttons, reveal, focus ring) that every later file specialises. Files are listed in
+ * document order after that, so specificity ties resolve the way the page reads.
+ */
+
+@import './base.css';
+/* `scene.css` sits directly after the base layer: the 3D scene is a shared primitive of
+ * both the hero and the auth column, and both of those files need to be able to position
+ * and override it, so it must come before them. */
+@import './scene.css';
+@import './nav.css';
+@import './hero.css';
+@import './sections.css';
+@import './instrument.css';
+@import './preview.css';
+@import './research.css';
+@import './footer.css';
+@import './auth.css';

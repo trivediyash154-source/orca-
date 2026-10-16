@@ -1,0 +1,724 @@
+/**
+ * Section 03: the optimisation argument and the trade-space instrument.
+ *
+ * Two rules govern everything below.
+ *
+ * 1. No literal colour. Alpha variants come from `color-mix()` against a token, never from a
+ *    new rgba(). SVG paint is set here rather than as a `fill`/`stroke` attribute in the TSX,
+ *    so the palette stays auditable from `tokens.css` alone (VISUAL_DESIGN.md §2). The one
+ *    attribute-set paint is the frontier's `stroke="url(#…)"`, which references a gradient
+ *    whose stops are also coloured from this file.
+ * 2. Spectral colour is reserved for the frontier, the selected plan and the band meters. Any
+ *    glow that is not encoding one of those has been removed on purpose.
+ */
+
+/* --- Section layout -------------------------------------------------------
+   The argument column is narrower than the instrument. It reads first on narrow viewports
+   because the plot means very little before the claim it tests has been stated. */
+
+.mk-optimisation {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--orca-space-8) var(--orca-space-7);
+  align-items: start;
+}
+
+@media (min-width: 1080px) {
+  .mk-optimisation {
+    grid-template-columns: minmax(0, 0.86fr) minmax(0, 1.14fr);
+  }
+}
+
+.mk-optimisation__aside,
+.mk-optimisation__main {
+  min-width: 0;
+}
+
+.mk-optimisation__subhead {
+  margin: var(--orca-space-7) 0 0;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  font-weight: 500;
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Objectives ledger ----------------------------------------------------
+   Seven rows on one hairline stack. The direction tag is the only thing that separates a cost
+   from a benefit here, so it is never allowed to wrap or shrink. */
+
+.mk-objectives {
+  list-style: none;
+  margin: var(--orca-space-4) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-objectives__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--orca-space-1) var(--orca-space-3);
+  padding: var(--orca-space-3) 0;
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-objectives__label {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--orca-space-2);
+  grid-column: 1;
+  grid-row: 1;
+  font-size: var(--orca-text-md);
+  color: var(--orca-text);
+}
+
+/* The unit sits with the term rather than in the note, because "fuel" and "fraction of the
+   vehicle's Δv budget" are one fact: the note explains the term, the unit defines it. */
+.mk-objectives__unit {
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-label);
+  color: var(--orca-muted-dim);
+}
+
+/* Every term is minimised, so the badge never varies. It is kept per row anyway: a single
+   note saying "all minimised" is read once and forgotten, whereas a column of identical MIN
+   tags is the shape of the invariant. */
+.mk-objectives__dir {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: center;
+  flex: none;
+  padding: 1px var(--orca-space-2);
+  border: 1px solid var(--orca-hairline);
+  border-radius: var(--orca-radius-sm);
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+  white-space: nowrap;
+}
+
+.mk-objectives__note {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  font-size: var(--orca-text-sm);
+  line-height: 1.5;
+  color: var(--orca-muted);
+}
+
+.mk-objectives__limit {
+  margin-top: var(--orca-space-4);
+  font-size: var(--orca-text-sm);
+  line-height: 1.6;
+  color: var(--orca-muted);
+}
+
+.mk-objectives__source {
+  margin-top: var(--orca-space-2);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-label);
+  color: var(--orca-muted-dim);
+}
+
+/* --- Scalarisation argument ----------------------------------------------- */
+
+.mk-scalarisation {
+  margin-top: var(--orca-space-7);
+  padding: var(--orca-space-5);
+  border: 1px solid var(--orca-hairline);
+  border-left: 2px solid color-mix(in srgb, var(--orca-spectral-3) 50%, transparent);
+  border-radius: var(--orca-radius-sm);
+  background: color-mix(in srgb, var(--orca-void-raised) 62%, transparent);
+}
+
+.mk-scalarisation__title {
+  margin: 0;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  font-weight: 500;
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-scalarisation__body {
+  margin: var(--orca-space-3) 0 0;
+  font-size: var(--orca-text-sm);
+  line-height: 1.62;
+  color: var(--orca-muted);
+}
+
+.mk-scalarisation__source {
+  margin: var(--orca-space-4) 0 0;
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Concave-dent schematic ----------------------------------------------- */
+
+.mk-dent {
+  margin: var(--orca-space-4) 0 0;
+}
+
+.mk-dent__svg {
+  display: block;
+  width: 100%;
+  max-width: 340px;
+  height: auto;
+}
+
+.mk-dent__axis line {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+}
+
+/* Dashed because it is a construction line, not a measured boundary. */
+.mk-dent__hull {
+  fill: none;
+  stroke: var(--orca-muted-dim);
+  stroke-width: 1;
+  stroke-dasharray: 4 4;
+}
+
+.mk-dent__reachable circle {
+  fill: var(--orca-void);
+  stroke: var(--orca-muted);
+  stroke-width: 1.6;
+}
+
+/* The one point the method cannot reach is the only one that gets colour. */
+.mk-dent__unreachable {
+  fill: var(--orca-void);
+  stroke: var(--orca-spectral-4);
+  stroke-width: 2;
+}
+
+.mk-dent__label text {
+  fill: var(--orca-muted);
+  font-family: var(--orca-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+.mk-dent__axis-title {
+  fill: var(--orca-muted-dim);
+  font-size: 9px;
+  letter-spacing: var(--orca-tracking-mono);
+}
+
+.mk-dent__callout {
+  fill: var(--orca-spectral-4);
+  font-family: var(--orca-font-mono);
+  font-size: 10px;
+  letter-spacing: var(--orca-tracking-mono);
+}
+
+.mk-dent__caption {
+  margin: var(--orca-space-2) 0 0;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  line-height: 1.5;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Instrument frame -----------------------------------------------------
+   A ruled enclosure rather than a floating card: the plot is an instrument panel, and panels
+   have edges. No shadow, no blur, no glow on the frame itself. */
+
+.mk-instrument {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orca-space-5);
+  padding: var(--orca-space-5);
+  border: 1px solid var(--orca-hairline-strong);
+  border-radius: var(--orca-radius-md);
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--orca-void-raised) 94%, transparent),
+    color-mix(in srgb, var(--orca-void) 94%, transparent)
+  );
+}
+
+@media (max-width: 560px) {
+  .mk-instrument {
+    padding: var(--orca-space-4);
+    gap: var(--orca-space-4);
+  }
+}
+
+.mk-instrument__header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--orca-space-3);
+  padding-bottom: var(--orca-space-3);
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-instrument__meta {
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Preference control ---------------------------------------------------
+   Real radio inputs behind styled labels: arrow-key traversal, the roving focus and the
+   single-selection semantics all come from the platform rather than from re-implementations
+   of them. `min-inline-size: 0` undoes the fieldset's intrinsic minimum, which would
+   otherwise refuse to shrink below its content at 360px. */
+
+.mk-instrument__preference {
+  min-inline-size: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.mk-instrument__preference-legend {
+  padding: 0;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-instrument__segments {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--orca-space-2);
+  margin-top: var(--orca-space-3);
+}
+
+.mk-instrument__segment {
+  position: relative;
+  flex: 1 1 7rem;
+  min-width: 0;
+}
+
+/* Clipped rather than hidden: `display: none` would take the input out of the tab order and
+   out of the radio group's keyboard handling. */
+.mk-instrument__segment-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.mk-instrument__segment-label {
+  display: block;
+  padding: var(--orca-space-2) var(--orca-space-3);
+  border: 1px solid var(--orca-hairline);
+  border-radius: var(--orca-radius-sm);
+  background: color-mix(in srgb, var(--orca-void-raised) 70%, transparent);
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  color: var(--orca-muted);
+  cursor: pointer;
+  transition:
+    border-color var(--orca-dur-fast) var(--orca-ease),
+    background-color var(--orca-dur-fast) var(--orca-ease),
+    color var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-instrument__segment-label:hover {
+  border-color: var(--orca-hairline-strong);
+  color: var(--orca-text);
+}
+
+.mk-instrument__segment-input:checked + .mk-instrument__segment-label {
+  border-color: color-mix(in srgb, var(--orca-spectral-1) 60%, transparent);
+  background: color-mix(in srgb, var(--orca-spectral-2) 18%, var(--orca-void-raised));
+  color: var(--orca-text);
+}
+
+/* The input itself is clipped, so its focus ring has to be transferred to the visible label. */
+.mk-instrument__segment-input:focus-visible + .mk-instrument__segment-label {
+  outline: var(--orca-focus-ring-width) solid var(--orca-focus-ring);
+  outline-offset: var(--orca-focus-ring-offset);
+}
+
+.mk-instrument__preference-note {
+  margin: var(--orca-space-3) 0 0;
+  font-size: var(--orca-text-sm);
+  line-height: 1.55;
+  color: var(--orca-muted);
+}
+
+/* --- Plot -----------------------------------------------------------------
+   The SVG has a floor width: shrunk to a 296px column its tick labels would fall below 8px
+   and stop being readable. Below that floor the plot scrolls inside this container, which
+   keeps the page itself free of horizontal overflow. */
+
+.mk-instrument__plot-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  margin-inline: calc(-1 * var(--orca-space-2));
+  padding-inline: var(--orca-space-2);
+}
+
+.mk-instrument__plot {
+  display: block;
+  width: 100%;
+  min-width: 580px;
+  height: auto;
+  overflow: visible;
+}
+
+/* At the floor width the viewBox is scaled down and the labels scale with it. Sizing the type
+   up in user units at these widths cancels that, so a tick label renders at roughly the same
+   size on a phone as on a desktop instead of dropping under ten pixels. */
+@media (max-width: 620px) {
+  .mk-instrument__tick-label {
+    font-size: 13px;
+  }
+
+  .mk-instrument__axis-title,
+  .mk-instrument__annotation text {
+    font-size: 12px;
+  }
+}
+
+.mk-instrument__graticule line {
+  stroke: var(--orca-hairline);
+  stroke-width: 1;
+}
+
+.mk-instrument__axis-line,
+.mk-instrument__tick {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+}
+
+.mk-instrument__tick-label {
+  fill: var(--orca-muted-dim);
+  font-family: var(--orca-font-mono);
+  font-size: 12px;
+  letter-spacing: 0.03em;
+}
+
+.mk-instrument__axis-title {
+  fill: var(--orca-muted);
+  font-family: var(--orca-font-mono);
+  font-size: 11px;
+  letter-spacing: var(--orca-tracking-mono);
+}
+
+.mk-instrument__utopia line {
+  stroke: var(--orca-muted-dim);
+  stroke-width: 1;
+}
+
+.mk-instrument__utopia-label {
+  fill: var(--orca-muted-dim);
+  font-family: var(--orca-font-mono);
+  font-size: 10px;
+  letter-spacing: var(--orca-tracking-mono);
+}
+
+/* --- Frontier -------------------------------------------------------------
+   The one place on this page where the full spectral ramp is spent, because it is the one
+   thing the ramp is for: the nondominated set, running from the cheapest, slowest plan to the
+   fastest, most expensive one. */
+
+.mk-instrument__stop {
+  stop-opacity: 1;
+}
+
+.mk-instrument__stop--1 {
+  stop-color: var(--orca-spectral-1);
+}
+
+.mk-instrument__stop--2 {
+  stop-color: var(--orca-spectral-2);
+}
+
+.mk-instrument__stop--3 {
+  stop-color: var(--orca-spectral-3);
+}
+
+.mk-instrument__stop--4 {
+  stop-color: var(--orca-spectral-4);
+}
+
+.mk-instrument__stop--5 {
+  stop-color: var(--orca-spectral-5);
+}
+
+.mk-instrument__stop--6 {
+  stop-color: var(--orca-spectral-6);
+}
+
+.mk-instrument__frontier {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* --- Candidate nodes ------------------------------------------------------ */
+
+.mk-instrument__node {
+  cursor: pointer;
+}
+
+/* `pointer-events: all` rather than relying on a transparent fill being "painted": it makes
+   the 30-unit target hold regardless of how a browser resolves paint-based hit testing. */
+.mk-instrument__hit {
+  fill: transparent;
+  stroke: transparent;
+  stroke-width: 0;
+  pointer-events: all;
+}
+
+.mk-instrument__point {
+  transition:
+    fill var(--orca-dur-fast) var(--orca-ease),
+    stroke var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-instrument__node--dominated .mk-instrument__point {
+  fill: var(--orca-void-raised);
+  stroke: var(--orca-neutral);
+  stroke-width: 1.4;
+}
+
+.mk-instrument__node--frontier .mk-instrument__point {
+  fill: var(--orca-void);
+  stroke: var(--orca-spectral-1);
+  stroke-width: 1.8;
+}
+
+.mk-instrument__node:hover .mk-instrument__point {
+  stroke: var(--orca-text);
+}
+
+.mk-instrument__node.is-selected .mk-instrument__point {
+  fill: var(--orca-spectral-6);
+  stroke: var(--orca-spectral-6);
+}
+
+.mk-instrument__halo {
+  fill: none;
+  stroke: var(--orca-spectral-6);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+/* An outline on an SVG group is unreliable across engines, so the focus indicator is drawn
+   with the shapes the group already contains. `outline: none` here is paired with a stronger
+   replacement, never with nothing. */
+.mk-instrument__node:focus-visible {
+  outline: none;
+}
+
+.mk-instrument__node:focus-visible .mk-instrument__hit {
+  fill: color-mix(in srgb, var(--orca-focus-ring) 12%, transparent);
+  stroke: var(--orca-focus-ring);
+  stroke-width: 2;
+}
+
+/* --- Crosshair and annotations -------------------------------------------- */
+
+.mk-instrument__crosshair line {
+  stroke: var(--orca-spectral-6);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+  opacity: 0.55;
+}
+
+.mk-instrument__crosshair-label {
+  fill: var(--orca-spectral-6);
+  font-family: var(--orca-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+}
+
+.mk-instrument__annotation line {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+}
+
+.mk-instrument__annotation text {
+  fill: var(--orca-muted);
+  font-family: var(--orca-font-mono);
+  font-size: 10.5px;
+  letter-spacing: var(--orca-tracking-mono);
+}
+
+/* --- Legend --------------------------------------------------------------- */
+
+.mk-instrument__legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--orca-space-2) var(--orca-space-5);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mk-instrument__legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--orca-space-2);
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-instrument__swatch {
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  border: 1.5px solid var(--orca-neutral);
+  background: var(--orca-void-raised);
+}
+
+.mk-instrument__swatch--frontier {
+  border-color: var(--orca-spectral-1);
+  background: var(--orca-void);
+}
+
+.mk-instrument__swatch--selected {
+  border-color: var(--orca-spectral-6);
+  background: var(--orca-spectral-6);
+}
+
+/* --- Readout panel -------------------------------------------------------- */
+
+.mk-instrument__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orca-space-4);
+  padding-top: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-instrument__origin {
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted);
+}
+
+.mk-instrument__readouts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  gap: var(--orca-space-4);
+}
+
+.mk-instrument__bands {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--orca-space-4);
+}
+
+@media (min-width: 620px) {
+  .mk-instrument__bands {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.mk-instrument__band-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--orca-space-2);
+  margin: 0 0 var(--orca-space-2);
+}
+
+.mk-instrument__band-label {
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-instrument__band-state {
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-mission-active);
+}
+
+.mk-instrument__band--breach .mk-instrument__band-state {
+  color: var(--orca-rescue-signal);
+}
+
+.mk-instrument__band-track {
+  position: relative;
+  height: 6px;
+  border: 1px solid var(--orca-hairline);
+  border-radius: var(--orca-radius-sm);
+  background: color-mix(in srgb, var(--orca-void) 76%, transparent);
+  overflow: hidden;
+}
+
+.mk-instrument__band-fill {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: var(--mk-band-fill, 0%);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--orca-spectral-1) 34%, transparent),
+    var(--orca-spectral-1)
+  );
+  transition: width var(--orca-dur-med) var(--orca-ease);
+}
+
+.mk-instrument__band--breach .mk-instrument__band-fill {
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--orca-rescue-signal) 34%, transparent),
+    var(--orca-rescue-signal)
+  );
+}
+
+/* The acceptance threshold, drawn on the track rather than stated only in the caption: a
+   meter without its limit marked is a number with a decoration around it. */
+.mk-instrument__band-mark {
+  position: absolute;
+  inset-block: 0;
+  left: var(--mk-band-mark, 50%);
+  width: 1px;
+  background: var(--orca-text);
+  opacity: 0.62;
+}
+
+.mk-instrument__footnote {
+  margin: 0;
+  padding-top: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+  font-size: var(--orca-text-xs);
+  line-height: 1.6;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Reduced motion -------------------------------------------------------
+   Only transitions are removed. Every value, every band fill and every crosshair stays
+   exactly where it is; nothing here hides content. */
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-instrument__segment-label,
+  .mk-instrument__point,
+  .mk-instrument__band-fill {
+    transition: none;
+  }
+}

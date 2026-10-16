@@ -1,0 +1,239 @@
+/**
+ * ORCA design tokens — Phase 10 brief §7/§59. Every color, spacing, radius, shadow and
+ * typography value used anywhere in the frontend is defined here exactly once. No
+ * component may hardcode a hex color or magic pixel value — see `VISUAL_DESIGN.md` §2.
+ */
+
+:root {
+  /* --- Surfaces --------------------------------------------------------- */
+  --orca-bg: #05070d;
+  --orca-surface: #0b1119;
+  --orca-surface-elevated: #121a26;
+  --orca-border: #1e2a3a;
+  --orca-border-subtle: #16202c;
+
+  /* --- Text --------------------------------------------------------------- */
+  --orca-text: #e6ecf5;
+  --orca-muted: #7f8fa6;
+  --orca-muted-dim: #5a6a80;
+
+  /* --- Semantic status colors ---------------------------------------------
+     Used consistently across markers, badges, and text -- never a one-off hex. */
+  --orca-primary: #4a90d6;
+  --orca-success: #45b787;
+  --orca-warning: #d6a344;
+  --orca-critical: #d6544a;
+  --orca-mission-active: #4ac9d6;
+  --orca-orbital-link: #4a90d6;
+  --orca-neutral: #5a6a80;
+
+  /* --- Orbital band accents (subtle differentiation, not decoration) ------ */
+  --orca-band-leo: #4fa8ff;
+  --orca-band-meo: #a878ff;
+  --orca-band-geo: #ff7ab8;
+
+  /* --- Spacing scale -------------------------------------------------------- */
+  --orca-space-1: 4px;
+  --orca-space-2: 8px;
+  --orca-space-3: 12px;
+  --orca-space-4: 16px;
+  --orca-space-5: 24px;
+  --orca-space-6: 32px;
+
+  /* --- Radius --------------------------------------------------------------- */
+  --orca-radius-sm: 3px;
+  --orca-radius-md: 6px;
+  --orca-radius-lg: 10px;
+
+  /* --- Shadow (restrained -- one elevation level, not a stack) -------------- */
+  --orca-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --orca-glow-active: 0 0 12px;
+
+  /* --- Typography ------------------------------------------------------------ */
+  --orca-font-ui: -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --orca-font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
+  --orca-text-xs: 0.72rem;
+  --orca-text-sm: 0.82rem;
+  --orca-text-md: 0.92rem;
+  --orca-text-lg: 1.1rem;
+  --orca-text-xl: 1.6rem;
+  --orca-tracking-label: 0.07em;
+}
+
+/* ==========================================================================
+   Entry surface (landing / sign-in / sign-up)
+   --------------------------------------------------------------------------
+   The workspace tokens above are tuned for dense instrumentation read at arm's
+   length under room light. The entry surface has a different job: it is a
+   cinematic, low-density reading surface, so it needs deeper grounds, a longer
+   type scale and a controlled accent ramp that the workspace never required.
+   These are ADDITIVE -- nothing above is redefined, so the app shell renders
+   byte-identically with this block present.
+   ========================================================================== */
+
+:root {
+  /* --- Cinematic grounds ---------------------------------------------------
+     Darker than --orca-bg so a full-bleed WebGL starfield reads as depth rather
+     than as a panel sitting on a panel. --orca-glass is the only translucent
+     surface: panels over the 3D scene must let the scene through or the
+     composition flattens. */
+  --orca-void: #03050a;
+  --orca-void-raised: #070c15;
+  --orca-glass: rgba(9, 14, 24, 0.72);
+  --orca-glass-strong: rgba(6, 10, 18, 0.9);
+
+  /* --- Quiet text ----------------------------------------------------------
+     The entry surface's replacement for --orca-muted-dim, which it paints on
+     readout labels, field hints, table headers and every `Source ·` citation --
+     all at --orca-text-xs (11.5px) or --orca-text-sm (13.1px), so WCAG 1.4.3's
+     large-text exemption reaches none of them. #5a6a80 measures 3.44:1 on
+     --orca-surface and 3.70:1 on --orca-void, below the 4.5:1 those sizes
+     require. This holds that colour's hue and saturation (~214 deg, 17% S) and
+     lifts lightness alone until it clears on every ground the surface uses:
+     4.80:1 on --orca-surface, 4.96:1 on --orca-void-raised, 5.16:1 on
+     --orca-void.
+
+     A separate token rather than a new value for --orca-muted-dim, because this
+     block is additive by contract -- the workspace shell must render identically
+     whether or not it is present. `base.css` rebinds --orca-muted-dim to this on
+     `.mk-page`, so the entry surface inherits the accessible value and the
+     workspace keeps the one it was tuned with. */
+  --orca-entry-muted-dim: #6e8299;
+
+  /* --- Hairlines -----------------------------------------------------------
+     Instrument panels are delimited by ruled lines, not by shadows or rounded
+     card edges. Low-alpha steel blue so a rule reads as engraved into the
+     ground instead of drawn on top of it. */
+  --orca-hairline: rgba(120, 152, 196, 0.14);
+  --orca-hairline-strong: rgba(132, 168, 214, 0.3);
+
+  /* --- Spectral ramp -------------------------------------------------------
+     cyan -> electric blue -> violet -> magenta -> amber -> warm white. This ramp
+     ENCODES things (position along a transfer arc, depth into a Pareto front,
+     scan progress). It is never decoration, so the stops are deliberately held
+     below full saturation: a neon ramp used ornamentally would destroy the
+     signal value of the one place a glow actually means something. */
+  --orca-spectral-1: #3fb8cf;
+  --orca-spectral-2: #4f83db;
+  --orca-spectral-3: #8069d2;
+  --orca-spectral-4: #bf65ab;
+  --orca-spectral-5: #d9a054;
+  --orca-spectral-6: #eee2cd;
+
+  /* --- Rescue signal -------------------------------------------------------
+     Distinct from --orca-warning (a yellow-amber advisory) because "an object
+     needs rescue" and "a value is out of nominal range" are different claims and
+     must not share a colour. */
+  --orca-rescue-signal: #e8703a;
+
+  /* --- Focus ---------------------------------------------------------------
+     Focus is a first-class state here: the entry surface is keyboard-operable
+     end to end, so the ring is defined once and applied globally rather than
+     re-invented per control. */
+  --orca-focus-ring: #6fd0e0;
+  --orca-focus-ring-offset: 2px;
+  --orca-focus-ring-width: 2px;
+
+  /* --- Display type scale --------------------------------------------------
+     clamp() rather than breakpoint jumps: the headline has to hold its optical
+     weight continuously from a 360px phone to a 2560px display. The negative
+     display tracking keeps large type from looking loose; the positive mono
+     tracking is what makes a monospaced label read as a telemetry channel name
+     rather than as code. */
+  --orca-display-1: clamp(2.5rem, 6.4vw, 5.25rem);
+  --orca-display-2: clamp(1.9rem, 3.9vw, 3rem);
+  --orca-display-3: clamp(1.35rem, 2.3vw, 1.85rem);
+  --orca-lede: clamp(1rem, 1.28vw, 1.18rem);
+  --orca-tracking-display: -0.028em;
+  --orca-tracking-mono: 0.16em;
+
+  /* --- Section rhythm ------------------------------------------------------
+     The workspace scale stops at 32px because no workspace gap is ever larger.
+     Long-form sections need three more steps to establish vertical cadence. */
+  --orca-space-7: 48px;
+  --orca-space-8: 72px;
+  --orca-space-9: 112px;
+
+  /* --- Motion --------------------------------------------------------------
+     One easing curve for the whole entry surface. It decelerates hard and does
+     not overshoot: instrumentation that springs reads as a toy. Durations are
+     named by intent so a component never picks a raw millisecond value. */
+  --orca-ease: cubic-bezier(0.22, 0.68, 0.24, 1);
+  --orca-dur-fast: 140ms;
+  --orca-dur-med: 320ms;
+  --orca-dur-slow: 720ms;
+}
+
+/* ============================================================================================
+   LIGHT THEME — warm, not white
+   ============================================================================================
+
+   Deliberately creamy rather than clinical. A pure-white technical UI reads as a spreadsheet;
+   a warm ivory ground reads as paper, keeps the blue and cyan system accents looking like
+   instruments rather than hyperlinks, and is markedly easier on the eye over a long session.
+
+   Every value below has a CONTRAST RATIO computed against the surface it sits on, not chosen by
+   eye — the previous attempt failed exactly there, with borders and muted text that dissolved
+   into the background. Ratios are noted per token; body and label text clear WCAG AA (4.5:1),
+   and status accents clear it as well so a warning is never quieter than the text beside it.
+
+   The scene panel keeps its dark ground (`CatalogScene`'s SCENE_BACKGROUND). A view from orbit
+   onto a cream void loses every depth cue the starfield and atmospheric limb provide. The page
+   is paper; the scene stays a window. */
+
+:root[data-theme='light'] {
+  /* Warm neutral ground and surfaces. Ivory -> cream -> parchment, three steps of elevation. */
+  --orca-bg: #f4efe6;
+  --orca-surface: #fffcf7;
+  --orca-surface-elevated: #faf5ec;
+
+  /* Borders carry real weight here: 2.8:1 on the surface. The earlier pale hairline was
+     invisible on cream, which is what made panels look like they had no edges at all. */
+  --orca-border: #a89681;
+  --orca-border-subtle: #d8ccb9;
+
+  /* Warm near-black rather than blue-black, so text belongs to the paper.
+     --orca-text 15.5:1 · --orca-muted 7.4:1 · --orca-muted-dim 4.9:1, all on --orca-surface. */
+  --orca-text: #221e18;
+  --orca-muted: #5a5044;
+  --orca-muted-dim: #776b5c;
+
+  /* Status and accent colours, darkened until each clears 4.5:1 on the cream surface. The dark
+     theme's #4a90d6 measures 2.6:1 here — fine as a marker on black, unreadable as text. */
+  --orca-primary: #1a5c99;          /* 6.8:1 */
+  --orca-success: #1b6b44;          /* 6.4:1 */
+  --orca-warning: #8a5a00;          /* 5.8:1 */
+  --orca-critical: #a32b22;         /* 7.0:1 */
+  --orca-mission-active: #0b6c77;   /* 6.1:1 */
+  --orca-orbital-link: #1a5c99;
+  --orca-neutral: #6f6355;
+
+  --orca-band-leo: #1a5c99;
+  --orca-band-meo: #5c3f9e;
+  --orca-band-geo: #9c2f66;
+
+  /* Elevation comes from shadow, and the shadow is warm-tinted: a neutral grey drop shadow on
+     cream reads as dirt. */
+  --orca-shadow: 0 1px 2px rgba(60, 46, 26, 0.07), 0 6px 20px rgba(60, 46, 26, 0.09);
+  --orca-glow-active: 0 0 8px;
+
+  /* Entry-surface tokens: the landing page and the authentication views share this palette so
+     the product reads as one thing across the public and internal surfaces. */
+  --orca-void: #efe8dc;
+  --orca-void-raised: #f8f3ea;
+  --orca-glass: rgba(255, 252, 247, 0.86);
+  --orca-hairline: rgba(34, 30, 24, 0.16);
+  --orca-hairline-strong: rgba(34, 30, 24, 0.32);
+
+  /* The spectral ramp keeps its hues and drops in luminance so it stays legible as line work on
+     a pale ground; on cream the dark theme's bright cyan is close to invisible. */
+  --orca-spectral-1: #0d7a8c;
+  --orca-spectral-2: #1a5c99;
+  --orca-spectral-3: #4a3a96;
+  --orca-spectral-4: #8a2f70;
+  --orca-spectral-5: #8a5a00;
+  --orca-spectral-6: #6b5c3f;
+
+  --orca-rescue-signal: #b2451a;
+  --orca-focus-ring: #1a5c99;
+}

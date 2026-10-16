@@ -1,0 +1,560 @@
+/**
+ * Hero frame, headline composition, scene container and the two readout registers (.mk-hero-*).
+ *
+ * ## The composition
+ *
+ * One full-bleed render behind everything, one column of type over its left third, and a
+ * scrim between them. The scrim is the load-bearing element: without it the headline sits on
+ * whatever the scene happens to be drawing at that moment, which is unreadable on some frames
+ * and fine on others -- an accessibility failure that only shows up intermittently.
+ *
+ * ## The two registers
+ *
+ * `.mk-hero__annotations` are the illustrative scenario and are drawn as instrument callouts,
+ * pinned by percentage so they track the render. `.mk-hero__figures` are measured, cited
+ * numbers and are drawn as a ruled ledger. The difference in treatment is deliberate: a reader
+ * should be able to tell the two apart before reading a word of either.
+ *
+ * ## Below 1020px
+ *
+ * The callouts stop being callouts. They become an ordinary readout grid under the copy and
+ * their leader lines are dropped, because a leader line that points at nothing is worse than
+ * no leader line -- and the alternative, hiding them, would remove real text from the page.
+ * The render moves into the flow at reduced height rather than sitting behind the type.
+ */
+
+.mk-hero {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: var(--orca-space-5);
+  /* The sticky bar already consumes flow space above this, so a full 100svh here would push
+     the instrument bar below the fold on every load. */
+  min-height: calc(100vh - var(--orca-space-8));
+  min-height: calc(100svh - var(--orca-space-8));
+  padding-block: var(--orca-space-7) var(--orca-space-4);
+  overflow-x: clip;
+}
+
+/* --- Scene ---------------------------------------------------------------- */
+
+.mk-hero__scene {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+}
+
+/* Two washes in one layer: a lateral one that clears the copy column, and a short vertical one
+   that seats the render on the instrument bar instead of letting it run into it. */
+.mk-hero__scrim {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(
+      100deg,
+      var(--orca-void) 0%,
+      color-mix(in srgb, var(--orca-void) 88%, transparent) 34%,
+      color-mix(in srgb, var(--orca-void) 30%, transparent) 58%,
+      transparent 76%
+    ),
+    linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--orca-void) 55%, transparent) 0%,
+      transparent 22%,
+      transparent 58%,
+      color-mix(in srgb, var(--orca-void) 94%, transparent) 100%
+    );
+}
+
+/* --- Frame ---------------------------------------------------------------- */
+
+.mk-hero__frame {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 620px) minmax(0, 1fr);
+  align-content: center;
+  /* Pointer events pass through the empty half of the frame so the scene keeps receiving them;
+     the elements that need them take them back individually. */
+  pointer-events: none;
+}
+
+.mk-hero__copy {
+  grid-column: 1;
+  max-width: 620px;
+  pointer-events: auto;
+}
+
+.mk-hero__title {
+  margin: var(--orca-space-4) 0 0;
+  /* The display scale, capped. `--orca-display-1` is sized for a headline that owns the full
+     measure; this one shares its viewport with a lede, two actions, seven readouts and the
+     instrument bar, and at the token's own maximum that stack no longer fits one screen at
+     900px. The cap only binds above ~1250px, so the small end of the scale is untouched. */
+  font-size: min(var(--orca-display-1), 4.25rem);
+  line-height: 1.02;
+  letter-spacing: var(--orca-tracking-display);
+  font-weight: 600;
+  color: var(--orca-text);
+  text-wrap: balance;
+}
+
+/* The one gradient on the page that is not encoding a measurement, and it earns its place: the
+   spectral ramp is this project's language for "several objectives at once", and the clause it
+   paints is the one that says the objectives conflict. Declared as a flat colour first so a
+   browser without background-clip renders readable type rather than nothing. */
+.mk-hero__title-emphasis {
+  color: var(--orca-spectral-1);
+}
+
+@supports (background-clip: text) or (-webkit-background-clip: text) {
+  .mk-hero__title-emphasis {
+    background-image: linear-gradient(
+      96deg,
+      var(--orca-spectral-1) 0%,
+      var(--orca-spectral-2) 34%,
+      var(--orca-spectral-3) 68%,
+      var(--orca-spectral-4) 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+}
+
+.mk-hero__lede {
+  margin: var(--orca-space-4) 0 0;
+  max-width: 58ch;
+  font-size: var(--orca-lede);
+  line-height: 1.62;
+  color: var(--orca-muted);
+}
+
+.mk-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--orca-space-3);
+  margin-top: var(--orca-space-5);
+}
+
+/* --- Callouts over the render --------------------------------------------- */
+
+.mk-hero__annotations {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  pointer-events: none;
+}
+
+.mk-hero-tag {
+  position: absolute;
+  top: var(--mk-tag-top);
+  display: flex;
+  align-items: center;
+  gap: var(--orca-space-2);
+  pointer-events: auto;
+  animation: mk-hero-tag-in var(--orca-dur-slow) var(--orca-ease) both;
+}
+
+/* Pinned to the left of the render, leader pointing right, text flush against it. */
+.mk-hero-tag--left {
+  left: var(--mk-tag-inset);
+  flex-direction: row-reverse;
+}
+
+.mk-hero-tag--left .mk-readout {
+  align-items: flex-end;
+  text-align: right;
+}
+
+/* Pinned to the right edge, leader pointing back into the render. */
+.mk-hero-tag--right {
+  right: var(--mk-tag-inset);
+  flex-direction: row;
+}
+
+.mk-hero-tag__leader {
+  position: relative;
+  flex: none;
+  width: clamp(26px, 3.6vw, 60px);
+  height: 1px;
+  background: var(--orca-hairline-strong);
+}
+
+.mk-hero-tag__leader::after {
+  content: '';
+  position: absolute;
+  top: -2px;
+  width: 5px;
+  height: 5px;
+  border: 1px solid var(--orca-hairline-strong);
+  border-radius: 50%;
+}
+
+.mk-hero-tag--left .mk-hero-tag__leader::after {
+  right: -1px;
+}
+
+.mk-hero-tag--right .mk-hero-tag__leader::after {
+  left: -1px;
+}
+
+.mk-hero-tag .mk-readout__value {
+  font-size: var(--orca-text-md);
+}
+
+/* --- Measured figures ----------------------------------------------------- */
+
+.mk-hero__figures {
+  position: relative;
+  z-index: 1;
+}
+
+.mk-hero__figures-label {
+  margin-bottom: var(--orca-space-4);
+}
+
+.mk-hero__figures-list {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--orca-space-5);
+  margin: 0;
+  padding: var(--orca-space-4) 0 0;
+  list-style: none;
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-hero__figure {
+  padding-left: var(--orca-space-4);
+  border-left: 1px solid var(--orca-hairline);
+}
+
+.mk-hero__figure:first-child {
+  padding-left: 0;
+  border-left: 0;
+}
+
+.mk-hero__figure-note {
+  margin: var(--orca-space-2) 0 0;
+  font-size: var(--orca-text-xs);
+  line-height: 1.5;
+  color: var(--orca-muted);
+}
+
+/* --- Instrument bar ------------------------------------------------------- */
+
+.mk-hero__bar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orca-space-5);
+  padding-top: var(--orca-space-3);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-hero__scroll {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--orca-space-3);
+  text-decoration: none;
+  color: var(--orca-muted);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  transition: color var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-hero__scroll:hover {
+  color: var(--orca-text);
+}
+
+.mk-hero__scroll-line {
+  position: relative;
+  display: block;
+  width: 42px;
+  height: 1px;
+  background: var(--orca-hairline-strong);
+  overflow: hidden;
+}
+
+/* A single lit segment travelling the length of the rule: the cue is the movement, so under
+   reduced motion the rule simply stays a rule. */
+.mk-hero__scroll-line::after {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 14px;
+  background: var(--orca-spectral-1);
+  animation: mk-hero-scroll-cue 2.6s var(--orca-ease) infinite;
+}
+
+.mk-hero__disclosure {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--orca-space-2) var(--orca-space-3);
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted);
+}
+
+.mk-hero__disclosure-text {
+  max-width: 56ch;
+}
+
+.mk-hero__index {
+  margin: 0;
+  flex: none;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted);
+}
+
+/* --- Entrance ------------------------------------------------------------- */
+
+.mk-hero__copy > * {
+  animation: mk-hero-rise var(--orca-dur-slow) var(--orca-ease) both;
+}
+
+.mk-hero__copy > *:nth-child(1) {
+  animation-delay: 60ms;
+}
+.mk-hero__copy > *:nth-child(2) {
+  animation-delay: 140ms;
+}
+.mk-hero__copy > *:nth-child(3) {
+  animation-delay: 220ms;
+}
+.mk-hero__copy > *:nth-child(4) {
+  animation-delay: 300ms;
+}
+
+.mk-hero-tag:nth-child(1) {
+  animation-delay: 420ms;
+}
+.mk-hero-tag:nth-child(2) {
+  animation-delay: 480ms;
+}
+.mk-hero-tag:nth-child(3) {
+  animation-delay: 540ms;
+}
+.mk-hero-tag:nth-child(4) {
+  animation-delay: 600ms;
+}
+.mk-hero-tag:nth-child(5) {
+  animation-delay: 660ms;
+}
+.mk-hero-tag:nth-child(6) {
+  animation-delay: 720ms;
+}
+.mk-hero-tag:nth-child(7) {
+  animation-delay: 780ms;
+}
+
+@keyframes mk-hero-rise {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 14px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes mk-hero-tag-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mk-hero-scroll-cue {
+  0% {
+    transform: translateX(-100%);
+  }
+  55%,
+  100% {
+    transform: translateX(300%);
+  }
+}
+
+/* --- Breakpoints ---------------------------------------------------------- */
+
+@media (max-width: 1200px) {
+  /* The callouts are pinned in percentages of this frame and the leftmost sits at 58%. Holding
+     the copy column to 500px keeps a real gutter between the last line of the lede and the
+     first callout at 1024px, where 58% of the shell is only just past 540. */
+  .mk-hero__frame {
+    grid-template-columns: minmax(0, 500px) minmax(0, 1fr);
+  }
+
+  .mk-hero__figures-list {
+    gap: var(--orca-space-4);
+  }
+}
+
+/* Below this the render can no longer sit behind the type without one of them losing. The
+   render moves into the flow under the copy, and the callouts become a readout grid. */
+@media (max-width: 1020px) {
+  .mk-hero {
+    grid-template-rows: auto auto auto auto;
+    min-height: 0;
+  }
+
+  .mk-hero__scene {
+    position: relative;
+    inset: auto;
+    grid-row: 2;
+    height: clamp(240px, 42vh, 380px);
+    border-block: 1px solid var(--orca-hairline);
+    -webkit-mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      currentcolor 14%,
+      currentcolor 86%,
+      transparent 100%
+    );
+    mask-image: linear-gradient(
+      to bottom,
+      transparent 0%,
+      currentcolor 14%,
+      currentcolor 86%,
+      transparent 100%
+    );
+  }
+
+  .mk-hero__scrim {
+    background: linear-gradient(
+      to bottom,
+      color-mix(in srgb, var(--orca-void) 40%, transparent) 0%,
+      transparent 34%,
+      transparent 66%,
+      color-mix(in srgb, var(--orca-void) 40%, transparent) 100%
+    );
+  }
+
+  .mk-hero__frame {
+    grid-row: 1;
+    grid-template-columns: minmax(0, 1fr);
+    pointer-events: auto;
+  }
+
+  .mk-hero__figures {
+    grid-row: 3;
+  }
+
+  .mk-hero__bar {
+    grid-row: 4;
+  }
+
+  .mk-hero__annotations {
+    position: static;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: var(--orca-space-5) var(--orca-space-4);
+    margin-top: var(--orca-space-6);
+    padding-top: var(--orca-space-5);
+    border-top: 1px solid var(--orca-hairline);
+    pointer-events: auto;
+  }
+
+  .mk-hero-tag,
+  .mk-hero-tag--left,
+  .mk-hero-tag--right {
+    position: static;
+    flex-direction: row;
+  }
+
+  .mk-hero-tag--left .mk-readout {
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .mk-hero-tag__leader {
+    display: none;
+  }
+
+  /* Callout labels are `nowrap` so a value never shifts under its label on the wide frame. In
+     the stacked grid the constraint inverts: "Recovery probability" is wider than a 360px
+     column can give it, and a wrapped label costs two lines where an unwrapped one costs a
+     clipped word. */
+  .mk-hero-tag .mk-readout__label {
+    white-space: normal;
+  }
+
+  .mk-hero__figures-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .mk-hero__figure:nth-child(odd) {
+    padding-left: 0;
+    border-left: 0;
+  }
+}
+
+@media (max-width: 800px) {
+  .mk-hero__bar {
+    flex-wrap: wrap;
+  }
+
+  .mk-hero__disclosure {
+    order: 3;
+    flex-basis: 100%;
+  }
+}
+
+@media (max-width: 600px) {
+  .mk-hero__actions .mk-action {
+    flex: 1 1 auto;
+  }
+
+  .mk-hero__figures-list {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--orca-space-4);
+  }
+
+  .mk-hero__figure {
+    padding-left: 0;
+    border-left: 0;
+    padding-top: var(--orca-space-4);
+    border-top: 1px solid var(--orca-hairline);
+  }
+
+  .mk-hero__figure:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+}
+
+/* --- Reduced motion -------------------------------------------------------
+   Nothing here hides content: the entrance animations are replaced by their end state, and the
+   scroll cue keeps its rule and loses only the travelling segment. */
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-hero__copy > *,
+  .mk-hero-tag {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+
+  .mk-hero__scroll {
+    transition: none;
+  }
+
+  .mk-hero__scroll-line::after {
+    animation: none;
+    inset: 0;
+    width: auto;
+    background: var(--orca-spectral-1);
+    opacity: 0.5;
+  }
+}

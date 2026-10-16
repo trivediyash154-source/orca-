@@ -1,0 +1,411 @@
+/**
+ * Research result tables, the methods statement and the disclosure panel (.mk-research-*).
+ *
+ * This is deliberately the least decorated band on the page. Its whole argument is that the
+ * numbers were checked, so anything that looks persuasive rather than measured works against
+ * it: no card shadows, no gradient panels, no coloured figures. Structure is carried by
+ * hairlines and by the same 4.5rem monospaced gutter the section headings use, so a result
+ * reads as a numbered figure in a report.
+ *
+ * Exactly one accent appears here and it means exactly one thing: amber marks a limitation
+ * attached to the finding above it (VISUAL_DESIGN.md §2 — a glow must encode something).
+ */
+
+/* --- Methods statement ----------------------------------------------------
+   Placed before the results, in the order a paper reads. Ruled top and bottom rather than
+   boxed, so it registers as a preamble to the results instead of as a sibling card. */
+
+.mk-research-methods {
+  display: grid;
+  gap: var(--orca-space-5);
+  margin-bottom: var(--orca-space-8);
+  padding-block: var(--orca-space-5);
+  border-block: 1px solid var(--orca-hairline);
+}
+
+.mk-research-methods__title {
+  margin: var(--orca-space-2) 0 0;
+  font-size: var(--orca-text-lg);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--orca-text);
+}
+
+.mk-research-methods__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  gap: var(--orca-space-4) var(--orca-space-6);
+  margin: 0;
+}
+
+.mk-research-methods__item {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orca-space-1);
+  min-width: 0;
+}
+
+.mk-research-methods__term {
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-research-methods__value {
+  margin: 0;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-sm);
+  line-height: 1.5;
+  color: var(--orca-text);
+  overflow-wrap: anywhere;
+}
+
+.mk-research-methods__source {
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+}
+
+/* --- Result panels --------------------------------------------------------
+   The ordinal sits in the same gutter as the section index so results line up with the
+   heading above them; it is decorative numbering, hidden from assistive technology in the
+   component, and never carries information the heading does not. */
+
+.mk-research-results {
+  display: grid;
+  gap: var(--orca-space-8);
+}
+
+.mk-research-result {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: var(--orca-space-4) var(--orca-space-5);
+  padding-top: var(--orca-space-6);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-research-result__ordinal {
+  grid-column: 1;
+  padding-top: 0.35rem;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+}
+
+.mk-research-result__head,
+.mk-research-result__body {
+  grid-column: 2;
+  min-width: 0;
+}
+
+.mk-research-result__question {
+  margin: var(--orca-space-2) 0 0;
+  max-width: 52ch;
+  font-size: var(--orca-display-3);
+  font-weight: 600;
+  line-height: 1.22;
+  letter-spacing: var(--orca-tracking-display);
+  color: var(--orca-text);
+  text-wrap: balance;
+}
+
+.mk-research-result__finding {
+  margin: 0;
+  max-width: 74ch;
+  font-size: var(--orca-text-md);
+  line-height: 1.65;
+  color: var(--orca-muted);
+}
+
+.mk-research-result__source {
+  margin: var(--orca-space-4) 0 0;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+  overflow-wrap: anywhere;
+}
+
+/* --- Tables ---------------------------------------------------------------
+   Monospaced with tabular figures so digits align vertically without any per-cell width
+   handling. The container scrolls, never the page. */
+
+.mk-research-table-scroll {
+  margin-top: var(--orca-space-5);
+  padding: var(--orca-space-4) var(--orca-space-5);
+  border: 1px solid var(--orca-hairline);
+  background: color-mix(in srgb, var(--orca-void-raised) 62%, transparent);
+  overflow-x: auto;
+}
+
+.mk-research-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.mk-research-table__caption {
+  caption-side: top;
+  text-align: left;
+  padding-bottom: var(--orca-space-4);
+  /* The wide telemetry tracking is dialled back here: it is legible on a three-word channel
+     label and unreadable across a full sentence of methodology. */
+  letter-spacing: 0.03em;
+  font-size: var(--orca-text-xs);
+  line-height: 1.5;
+  color: var(--orca-muted);
+}
+
+.mk-research-table thead th {
+  padding: 0 var(--orca-space-4) var(--orca-space-3);
+  border-bottom: 1px solid var(--orca-hairline-strong);
+  font-size: var(--orca-text-xs);
+  font-weight: 500;
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  text-align: right;
+  white-space: nowrap;
+  color: var(--orca-muted-dim);
+}
+
+.mk-research-table tbody th,
+.mk-research-table tbody td {
+  padding: var(--orca-space-3) var(--orca-space-4);
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-research-table tbody tr:last-child th,
+.mk-research-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.mk-research-table__rowhead {
+  font-weight: 500;
+  white-space: nowrap;
+  color: var(--orca-text);
+}
+
+/* Both the column header and the body cells of the first column sit flush to the table's left
+   edge. Stated at this specificity because the generic `thead th` / `tbody th` rules above
+   would otherwise right-align and indent the header of a column whose values are left-aligned,
+   which reads as two columns rather than one. */
+.mk-research-table thead .mk-research-table__rowhead,
+.mk-research-table tbody .mk-research-table__rowhead {
+  text-align: left;
+  padding-left: 0;
+}
+
+.mk-research-table thead .mk-research-table__rowhead {
+  color: var(--orca-muted-dim);
+}
+
+.mk-research-table__cell {
+  text-align: right;
+  white-space: nowrap;
+  color: var(--orca-text);
+}
+
+.mk-research-table tbody tr:last-child .mk-research-table__cell,
+.mk-research-table tbody tr:last-child .mk-research-table__rowhead {
+  color: var(--orca-muted);
+}
+
+/* A cell holding a phrase rather than a measurement: left-aligned and allowed to wrap, so a
+   long qualifier does not push the whole table into a horizontal scroll on a phone. */
+.mk-research-table__cell--text {
+  text-align: left;
+  white-space: normal;
+  min-width: 18ch;
+  color: var(--orca-muted);
+}
+
+/* --- Caveats --------------------------------------------------------------
+   The one accent in this section. Amber, ruled on the leading edge, with a wash faint enough
+   that it reads as an annotation in the margin rather than as a warning banner. */
+
+.mk-research-caveat {
+  margin-top: var(--orca-space-5);
+  padding: var(--orca-space-4) var(--orca-space-5);
+  border-left: 2px solid color-mix(in srgb, var(--orca-spectral-5) 60%, transparent);
+  background: color-mix(in srgb, var(--orca-spectral-5) 5%, transparent);
+}
+
+.mk-research-caveat__label {
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-spectral-5);
+}
+
+.mk-research-caveat__body {
+  margin: var(--orca-space-2) 0 0;
+  max-width: 74ch;
+  font-size: var(--orca-text-sm);
+  line-height: 1.6;
+  color: var(--orca-text);
+}
+
+/* --- The correction record ------------------------------------------------
+   Given a stronger version of the same amber, never a different colour: it is the same claim
+   (a limitation qualifies the finding), stated louder because the report itself singles this
+   result out as its most credible one. */
+
+.mk-research-result--correction {
+  border-top-color: color-mix(in srgb, var(--orca-spectral-5) 45%, transparent);
+}
+
+.mk-research-result--correction .mk-research-result__ordinal {
+  color: var(--orca-spectral-5);
+}
+
+.mk-research-result--correction .mk-research-caveat {
+  border-left-width: 3px;
+  border-left-color: var(--orca-spectral-5);
+  background: color-mix(in srgb, var(--orca-spectral-5) 8%, transparent);
+}
+
+.mk-research-result__note {
+  margin: 0 0 var(--orca-space-5);
+  max-width: 68ch;
+  font-size: var(--orca-lede);
+  line-height: 1.55;
+  color: var(--orca-text);
+  text-wrap: pretty;
+}
+
+.mk-research-result__note-source {
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+  white-space: nowrap;
+}
+
+/* --- Disclosure -----------------------------------------------------------
+   Framed as an instrument panel, not as fine print: same type size as the body copy, ruled
+   like every other panel, and given the full width of the measure. Shrinking a disclosure is
+   how a page signals it would rather not be read. */
+
+.mk-research-disclosure {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--orca-space-6);
+  margin-top: var(--orca-space-8);
+  padding: var(--orca-space-6);
+  border: 1px solid var(--orca-hairline-strong);
+  background: color-mix(in srgb, var(--orca-void-raised) 72%, transparent);
+}
+
+.mk-research-disclosure__title {
+  margin: var(--orca-space-2) 0 0;
+  font-size: var(--orca-display-3);
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: var(--orca-tracking-display);
+  color: var(--orca-text);
+  text-wrap: balance;
+}
+
+.mk-research-disclosure__source {
+  margin: var(--orca-space-4) 0 0;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+  overflow-wrap: anywhere;
+}
+
+.mk-research-disclosure__body {
+  display: grid;
+  gap: var(--orca-space-4);
+  min-width: 0;
+}
+
+.mk-research-disclosure__lede {
+  margin: 0;
+  max-width: 74ch;
+  font-size: var(--orca-text-md);
+  line-height: 1.65;
+  color: var(--orca-muted);
+}
+
+.mk-research-open {
+  display: grid;
+  gap: 0;
+  margin: var(--orca-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mk-research-open__item {
+  padding-block: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-research-open__title {
+  margin: 0;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-sm);
+  letter-spacing: 0.04em;
+  color: var(--orca-text);
+}
+
+.mk-research-open__body {
+  margin: var(--orca-space-2) 0 0;
+  max-width: 74ch;
+  font-size: var(--orca-text-sm);
+  line-height: 1.6;
+  color: var(--orca-muted);
+}
+
+.mk-research-open__source {
+  margin: var(--orca-space-2) 0 0;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+  overflow-wrap: anywhere;
+}
+
+/* --- Wide viewports -------------------------------------------------------
+   The disclosure splits into heading and body columns only when there is room for both to
+   keep a comfortable measure; below that the two-column version would give the body 30ch. */
+
+@media (min-width: 900px) {
+  /* The two long values get two tracks: a compiler flag list broken over four lines in a 15rem
+     column stops reading as one statement. Held behind a breakpoint because a `span 2` in a
+     grid that has resolved to a single column would force a second, overflowing track. */
+  .mk-research-methods__item--wide {
+    grid-column: span 2;
+  }
+}
+
+@media (min-width: 960px) {
+  .mk-research-disclosure {
+    grid-template-columns: minmax(0, 20rem) minmax(0, 1fr);
+    gap: var(--orca-space-7);
+    padding: var(--orca-space-7);
+  }
+}
+
+/* --- Narrow viewports -----------------------------------------------------
+   The gutter collapses at the same breakpoint as `.mk-section-heading`, so the ordinal and
+   the section index stay on the same rhythm at every width. */
+
+@media (max-width: 720px) {
+  .mk-research-result {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--orca-space-3);
+  }
+
+  .mk-research-result__ordinal,
+  .mk-research-result__head,
+  .mk-research-result__body {
+    grid-column: 1;
+  }
+
+  .mk-research-result__ordinal {
+    padding-top: 0;
+  }
+
+  .mk-research-table-scroll {
+    padding: var(--orca-space-3) var(--orca-space-4);
+  }
+
+  .mk-research-disclosure {
+    padding: var(--orca-space-5);
+  }
+}

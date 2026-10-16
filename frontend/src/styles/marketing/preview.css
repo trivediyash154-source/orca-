@@ -1,0 +1,842 @@
+/**
+ * Section 04 (workspace preview) and section 05 (capabilities ledger).
+ *
+ * The capabilities ledger lives here for a file-ownership reason rather than a design one:
+ * `sections.css` is owned by the narrative-sections task, and a rule set has to live in a file
+ * its author owns. Import order puts this file immediately after the instrument and before
+ * research, which is also where both of these sections fall in the document.
+ *
+ * Colour discipline as elsewhere: tokens only, alpha via `color-mix()`, and spectral paint
+ * reserved for things that encode something — the transfer arc, the emergency marker, the
+ * ordinal position of a ledger entry.
+ */
+
+/* --- Console frame --------------------------------------------------------
+   One enclosure around the whole preview, so it reads as a single interface rather than four
+   panels that happen to be adjacent. The internal seams are produced by a 1px grid gap over a
+   hairline background: each panel paints its own ground and the gaps between them become the
+   rules, which is how a real console is divided. */
+
+.mk-preview {
+  margin-top: var(--orca-space-7);
+  border: 1px solid var(--orca-hairline-strong);
+  border-radius: var(--orca-radius-md);
+  background: var(--orca-void-raised);
+  overflow: hidden;
+}
+
+.mk-preview__bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orca-space-3) var(--orca-space-4);
+  padding: var(--orca-space-3) var(--orca-space-4);
+  border-bottom: 1px solid var(--orca-hairline);
+  background: color-mix(in srgb, var(--orca-glass) 70%, transparent);
+}
+
+/* The preview declaration. It is the first thing in the frame and it never moves, because
+   every value inside this enclosure depends on the reader having seen it (house rule 4). */
+.mk-preview__chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--orca-space-2);
+  margin: 0;
+  padding: var(--orca-space-1) var(--orca-space-3);
+  border: 1px solid var(--orca-hairline-strong);
+  border-radius: var(--orca-radius-sm);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted);
+}
+
+.mk-preview__scenario {
+  display: flex;
+  align-items: center;
+  gap: var(--orca-space-3);
+  min-width: 0;
+}
+
+.mk-preview__field-label {
+  flex: none;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-preview__select {
+  min-width: 0;
+  max-width: 100%;
+  padding: var(--orca-space-2) var(--orca-space-3);
+  border: 1px solid var(--orca-hairline-strong);
+  border-radius: var(--orca-radius-sm);
+  background: var(--orca-void);
+  color: var(--orca-text);
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+
+/* --- Console grid ---------------------------------------------------------
+   Deliberately asymmetric: a narrow parameter rail, a dominant spatial panel, a narrower
+   status column. At tablet width the status column drops beneath the stage and the rail keeps
+   its full height, which is the arrangement the workspace itself falls back to. */
+
+.mk-preview__console {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1px;
+  background: var(--orca-hairline);
+}
+
+.mk-preview__rail,
+.mk-preview__stage,
+.mk-preview__column {
+  min-width: 0;
+  padding: var(--orca-space-4);
+  background: var(--orca-void-raised);
+}
+
+@media (min-width: 900px) {
+  .mk-preview__console {
+    grid-template-columns: minmax(0, 16rem) minmax(0, 1fr);
+    grid-template-areas:
+      'rail stage'
+      'rail column';
+  }
+
+  .mk-preview__rail {
+    grid-area: rail;
+  }
+
+  .mk-preview__stage {
+    grid-area: stage;
+  }
+
+  .mk-preview__column {
+    grid-area: column;
+  }
+}
+
+@media (min-width: 1240px) {
+  .mk-preview__console {
+    grid-template-columns: minmax(0, 15rem) minmax(0, 1fr) minmax(0, 15rem);
+    grid-template-areas: 'rail stage column';
+  }
+}
+
+.mk-preview__panel-title {
+  margin: 0;
+  padding: 0;
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  font-weight: 500;
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-preview__summary {
+  margin: var(--orca-space-3) 0 0;
+  font-size: var(--orca-text-sm);
+  line-height: 1.55;
+  color: var(--orca-muted);
+}
+
+/* --- Parameter rail ------------------------------------------------------- */
+
+.mk-preview__params {
+  margin: var(--orca-space-4) 0 0;
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-preview__param {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--orca-space-2);
+  padding: var(--orca-space-2) 0;
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-preview__param-label {
+  font-size: var(--orca-text-sm);
+  color: var(--orca-muted);
+}
+
+.mk-preview__param-value {
+  margin: 0;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4ch;
+  font-size: var(--orca-text-sm);
+  color: var(--orca-text);
+}
+
+.mk-preview__param-unit {
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+}
+
+/* Only rows transcribed from a repository document carry this, so a cited figure is visually
+   separable from a fixture at a glance. */
+.mk-preview__param-source {
+  padding-left: var(--orca-space-2);
+  font-size: var(--orca-text-xs);
+  color: var(--orca-spectral-1);
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
+
+/* --- Constraints ---------------------------------------------------------- */
+
+.mk-preview__constraints {
+  min-inline-size: 0;
+  margin: var(--orca-space-5) 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.mk-preview__constraint {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: var(--orca-space-3);
+  align-items: start;
+  padding: var(--orca-space-3) 0;
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-preview__checkbox {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--orca-spectral-1);
+  cursor: pointer;
+}
+
+.mk-preview__constraint-label {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orca-space-1);
+  cursor: pointer;
+}
+
+.mk-preview__constraint-name {
+  font-size: var(--orca-text-sm);
+  line-height: 1.35;
+  color: var(--orca-text);
+}
+
+.mk-preview__constraint-detail {
+  font-size: var(--orca-text-xs);
+  line-height: 1.5;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Spatial panel -------------------------------------------------------- */
+
+.mk-preview__stage-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--orca-space-2);
+  margin-bottom: var(--orca-space-3);
+}
+
+.mk-preview__stage-note {
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+/* A floor width, then scroll: below roughly 420px the annotations fall under 9px and stop
+   being readable. The scroll container is local, so the page never gains a horizontal
+   scrollbar of its own. */
+.mk-preview__scene {
+  display: block;
+  width: 100%;
+  min-width: 460px;
+  height: auto;
+}
+
+.mk-preview__stage {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+}
+
+.mk-preview__earth {
+  fill: color-mix(in srgb, var(--orca-spectral-2) 7%, var(--orca-void));
+}
+
+/* The lit limb. The only spectral edge in the scene that is not the transfer itself, and it
+   is there because the horizon is what fixes the viewer's altitude. */
+.mk-preview__limb {
+  fill: none;
+  stroke: color-mix(in srgb, var(--orca-spectral-1) 40%, transparent);
+  stroke-width: 1.4;
+}
+
+.mk-preview__shell {
+  fill: none;
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+  stroke-dasharray: 2 6;
+}
+
+.mk-preview__debris circle {
+  fill: var(--orca-muted-dim);
+  opacity: 0.66;
+}
+
+.mk-preview__shell-label text,
+.mk-preview__annotation text {
+  fill: var(--orca-muted);
+  font-family: var(--orca-font-mono);
+  font-size: 11px;
+  letter-spacing: var(--orca-tracking-mono);
+}
+
+.mk-preview__shell-label text {
+  fill: var(--orca-muted-dim);
+  font-size: 10px;
+}
+
+/* Scoped through the group so it outranks `.mk-preview__annotation text` above, which is a
+   descendant selector and would otherwise win the fill on equal-looking specificity. */
+.mk-preview__annotation .mk-preview__annotation-value {
+  fill: var(--orca-spectral-6);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+}
+
+/* Once the scene is at its floor width the whole viewBox is scaled down, and label text scales
+   with it. Sizing the type up in user units at these widths cancels that: the annotations come
+   out at roughly the same rendered size on a phone as on a desktop, rather than at nine pixels. */
+@media (max-width: 620px) {
+  .mk-preview__shell-label text,
+  .mk-preview__annotation text {
+    font-size: 12px;
+  }
+
+  .mk-preview__annotation .mk-preview__annotation-value {
+    font-size: 13px;
+  }
+}
+
+/* --- Transfer arc ---------------------------------------------------------
+   `pathLength="100"` normalises the dash geometry, so one keyframe draws any path shape from
+   end to end. The stroke is keyed on the selected plan in the TSX, so re-selecting re-runs the
+   trace: the line drawing itself in stands for the search that produced it, and is the only
+   animation in this section. */
+
+.mk-preview__stop {
+  stop-opacity: 1;
+}
+
+.mk-preview__stop--1 {
+  stop-color: var(--orca-spectral-1);
+}
+
+.mk-preview__stop--2 {
+  stop-color: var(--orca-spectral-2);
+}
+
+.mk-preview__stop--3 {
+  stop-color: var(--orca-spectral-3);
+}
+
+.mk-preview__stop--4 {
+  stop-color: var(--orca-spectral-4);
+}
+
+.mk-preview__stop--5 {
+  stop-color: var(--orca-spectral-5);
+}
+
+.mk-preview__transfer {
+  fill: none;
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: mk-preview-trace 1400ms var(--orca-ease) forwards;
+}
+
+@keyframes mk-preview-trace {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Each waypoint is addressed by its own class rather than by `.mk-preview__waypoint circle`.
+   A descendant selector as the base would outrank these single-class overrides and every
+   marker would come out the same colour. */
+.mk-preview__waypoint-vehicle {
+  fill: var(--orca-void);
+  stroke: var(--orca-spectral-1);
+  stroke-width: 2;
+}
+
+.mk-preview__waypoint-mid {
+  fill: var(--orca-spectral-3);
+  stroke: none;
+}
+
+.mk-preview__waypoint-target {
+  fill: var(--orca-void);
+  stroke: var(--orca-rescue-signal);
+  stroke-width: 2;
+}
+
+.mk-preview__waypoint-target-ring {
+  fill: none;
+  stroke: var(--orca-rescue-signal);
+  stroke-width: 1;
+  opacity: 0.4;
+  animation: mk-preview-ping 2.8s var(--orca-ease) infinite;
+}
+
+/* Opacity only. An animated radius would need per-engine attribute animation and would move
+   the marker's footprint, which is the one thing an emergency indicator must not do. */
+@keyframes mk-preview-ping {
+  0%,
+  100% {
+    opacity: 0.16;
+  }
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* --- Timeline -------------------------------------------------------------
+   Proportional at width, sequential when stacked. The share survives the switch as a bar,
+   because the relative length of a coast phase is the whole point of showing a timeline. */
+
+.mk-preview__timeline {
+  margin-top: var(--orca-space-4);
+  padding-top: var(--orca-space-3);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-preview__timeline-title {
+  margin: 0 0 var(--orca-space-3);
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted-dim);
+}
+
+.mk-preview__phases {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orca-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mk-preview__phase {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding-left: var(--orca-space-3);
+  border-left: 1px solid var(--orca-hairline-strong);
+}
+
+.mk-preview__phase::after {
+  content: '';
+  display: block;
+  width: var(--mk-phase-share, 100%);
+  height: 2px;
+  margin-top: var(--orca-space-1);
+  background: var(--orca-hairline-strong);
+}
+
+.mk-preview__phase-index {
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+}
+
+.mk-preview__phase-label {
+  font-size: var(--orca-text-xs);
+  line-height: 1.3;
+  color: var(--orca-muted);
+}
+
+@media (min-width: 620px) {
+  .mk-preview__phases {
+    flex-direction: row;
+    gap: 0;
+  }
+
+  /* `flex-basis: 0` is what makes the widths actually proportional. With the default `auto`
+     basis each segment starts at its label's intrinsic width and the grow factor only shares
+     out what is left, so a six-per-cent phase with a long name comes out nearly as wide as a
+     forty-two-per-cent one -- a timeline that quietly misstates its own proportions. Phase
+     names are kept short for the same reason. */
+  .mk-preview__phase {
+    flex-basis: 0;
+    padding-block: var(--orca-space-1);
+    overflow-wrap: anywhere;
+  }
+
+  /* In the row layout the element's own width already carries the share, so the bar spans it
+     fully rather than restating the percentage. It has to stay: with labels left-aligned in
+     their segments, a long phase otherwise reads as a hole in the layout rather than as the
+     longest phase of the mission. */
+  .mk-preview__phase::after {
+    width: 100%;
+  }
+}
+
+/* --- Status column -------------------------------------------------------- */
+
+.mk-preview__plan-id {
+  margin: var(--orca-space-3) 0 0;
+  font-size: var(--orca-text-lg);
+  letter-spacing: 0.1em;
+  color: var(--orca-text);
+}
+
+.mk-preview__objectives {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+  gap: var(--orca-space-4);
+  margin-top: var(--orca-space-4);
+  padding-top: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-preview__link {
+  margin-top: var(--orca-space-5);
+  padding-top: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-preview__link-row {
+  display: flex;
+  align-items: center;
+  gap: var(--orca-space-2);
+  margin: 0 0 var(--orca-space-2);
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-muted);
+}
+
+.mk-preview__link-note {
+  margin: var(--orca-space-3) 0 0;
+  font-size: var(--orca-text-xs);
+  line-height: 1.55;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Candidate strip ------------------------------------------------------ */
+
+.mk-preview__strip {
+  padding: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-preview__strip-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--orca-space-2) var(--orca-space-4);
+  margin-bottom: var(--orca-space-3);
+}
+
+.mk-preview__revision {
+  margin: 0;
+  font-size: var(--orca-text-xs);
+  text-transform: uppercase;
+  color: var(--orca-spectral-1);
+}
+
+.mk-preview__strip-scroll {
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  padding-bottom: var(--orca-space-2);
+}
+
+.mk-preview__candidates {
+  display: flex;
+  gap: var(--orca-space-2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.mk-preview__strip-empty {
+  margin: 0;
+  padding: var(--orca-space-4);
+  border: 1px dashed var(--orca-hairline-strong);
+  border-radius: var(--orca-radius-sm);
+  font-size: var(--orca-text-sm);
+  color: var(--orca-muted);
+}
+
+.mk-preview__candidate {
+  display: flex;
+  flex-direction: column;
+  gap: var(--orca-space-1);
+  min-width: 9.5rem;
+  padding: var(--orca-space-3);
+  border: 1px solid var(--orca-hairline);
+  border-radius: var(--orca-radius-sm);
+  background: color-mix(in srgb, var(--orca-void) 60%, transparent);
+  text-align: left;
+  cursor: pointer;
+  transition:
+    border-color var(--orca-dur-fast) var(--orca-ease),
+    background-color var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-preview__candidate:hover {
+  border-color: var(--orca-hairline-strong);
+  background: color-mix(in srgb, var(--orca-void-raised) 90%, transparent);
+}
+
+.mk-preview__candidate.is-active {
+  border-color: color-mix(in srgb, var(--orca-spectral-1) 58%, transparent);
+  background: color-mix(in srgb, var(--orca-spectral-2) 14%, var(--orca-void-raised));
+}
+
+.mk-preview__candidate-id {
+  font-size: var(--orca-text-sm);
+  letter-spacing: 0.1em;
+  color: var(--orca-text);
+}
+
+.mk-preview__candidate-metric {
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted);
+}
+
+/* --- Disconnection notice -------------------------------------------------
+   Permanent, in the frame, next to the only control that leaves it. */
+
+.mk-preview__foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orca-space-4);
+  padding: var(--orca-space-4);
+  border-top: 1px solid var(--orca-hairline);
+  background: color-mix(in srgb, var(--orca-glass) 60%, transparent);
+}
+
+.mk-preview__disclosure {
+  flex: 1 1 24rem;
+  margin: 0;
+  min-width: 0;
+  font-size: var(--orca-text-xs);
+  line-height: 1.6;
+  color: var(--orca-muted-dim);
+}
+
+/* --- Capabilities ledger --------------------------------------------------
+   Four rows on one rule, not four cards. The vertical hairline runs the full height of each
+   entry and passes through the centre of every orbital glyph, so the gutter reads as one axis
+   with a body on it rather than as four repeated ornaments. */
+
+.mk-ledger {
+  list-style: none;
+  margin: var(--orca-space-7) 0 0;
+  padding: 0;
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-ledger__item {
+  position: relative;
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-ledger__item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  /* Centred on the 44px glyph, which is left-aligned in the gutter column. */
+  left: 22px;
+  width: 1px;
+  background: var(--orca-hairline);
+}
+
+.mk-ledger__row {
+  display: grid;
+  grid-template-columns: 4.5rem minmax(0, 1fr);
+  gap: var(--orca-space-4) var(--orca-space-5);
+  padding: var(--orca-space-6) 0;
+}
+
+.mk-ledger__gutter {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--orca-space-3);
+}
+
+.mk-ledger__letter {
+  padding-left: 1px;
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  color: var(--orca-muted-dim);
+}
+
+.mk-ledger__glyph {
+  display: block;
+  flex: none;
+  overflow: visible;
+}
+
+.mk-ledger__glyph-orbit {
+  fill: none;
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1;
+}
+
+.mk-ledger__glyph-body {
+  fill: var(--orca-muted-dim);
+}
+
+/* The orbiting marker steps along the same ramp the frontier uses, one stop per entry, so its
+   colour states the entry's position in the sequence rather than decorating it. */
+.mk-ledger__glyph-node--0 {
+  fill: var(--orca-spectral-1);
+}
+
+.mk-ledger__glyph-node--1 {
+  fill: var(--orca-spectral-2);
+}
+
+.mk-ledger__glyph-node--2 {
+  fill: var(--orca-spectral-3);
+}
+
+.mk-ledger__glyph-node--3 {
+  fill: var(--orca-spectral-4);
+}
+
+.mk-ledger__body {
+  min-width: 0;
+}
+
+.mk-ledger__title {
+  margin: 0;
+  font-size: var(--orca-display-3);
+  line-height: 1.18;
+  letter-spacing: var(--orca-tracking-display);
+  font-weight: 600;
+  color: var(--orca-text);
+  text-wrap: balance;
+}
+
+.mk-ledger__text {
+  margin: var(--orca-space-3) 0 0;
+  max-width: 68ch;
+  font-size: var(--orca-text-md);
+  line-height: 1.62;
+  color: var(--orca-muted);
+}
+
+.mk-ledger__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--orca-space-2);
+  list-style: none;
+  margin: var(--orca-space-4) 0 0;
+  padding: 0;
+}
+
+/* Sits under the prose, not under the tags: it cites the paragraph's figures, and the tag
+   column is a specification list that quotes nothing. */
+.mk-ledger__source {
+  margin: var(--orca-space-3) 0 0;
+  font-size: var(--orca-text-xs);
+  color: var(--orca-muted-dim);
+  overflow-wrap: anywhere;
+}
+
+/* Wide enough for two columns, the tag row becomes a specification column beside the prose
+   rather than a third line under a paragraph that has already stopped at its measure. The
+   prose keeps its 68ch limit either way; this only uses the space the limit leaves over. */
+@media (min-width: 1080px) {
+  .mk-ledger__body {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 14rem);
+    column-gap: var(--orca-space-7);
+    align-items: start;
+  }
+
+  .mk-ledger__title {
+    grid-column: 1 / -1;
+  }
+
+  .mk-ledger__text {
+    grid-column: 1;
+    grid-row: 2;
+  }
+
+  .mk-ledger__tags {
+    grid-column: 2;
+    grid-row: 2;
+    flex-direction: column;
+    align-items: flex-start;
+    margin-top: var(--orca-space-3);
+  }
+
+  /* Placed explicitly rather than auto-flowed, which would drop it into the tag column. */
+  .mk-ledger__source {
+    grid-column: 1;
+    grid-row: 3;
+  }
+}
+
+@media (max-width: 720px) {
+  .mk-ledger__item::before {
+    display: none;
+  }
+
+  .mk-ledger__row {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--orca-space-3);
+    padding: var(--orca-space-5) 0;
+  }
+
+  .mk-ledger__gutter {
+    flex-direction: row;
+    align-items: center;
+    gap: var(--orca-space-3);
+  }
+}
+
+/* --- Reduced motion -------------------------------------------------------
+   The transfer arc is shown complete rather than never drawn, and the emergency ring settles
+   at its brightest value rather than disappearing. Nothing here removes information. */
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-preview__transfer {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+
+  .mk-preview__waypoint-target-ring {
+    animation: none;
+    opacity: 0.5;
+  }
+
+  .mk-preview__candidate {
+    transition: none;
+  }
+}

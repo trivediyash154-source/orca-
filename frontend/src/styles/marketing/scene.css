@@ -1,0 +1,363 @@
+/**
+ * The 3D scene's own shell, and the entire palette of the SVG fallback.
+ *
+ * Two things live here and nowhere else:
+ *
+ * 1. The stage that the WebGL canvas sits in — its edge treatment, and the pointer-event
+ *    split that lets a click reach the canvas while scroll, selection and every control
+ *    layered above it keep working.
+ * 2. Every colour in `SceneFallback.tsx`. That component contains no fill, stroke or
+ *    stop-colour of its own: the SVG carries geometry and class names, this file carries
+ *    paint. It is the only way the fallback and the WebGL scene can be guaranteed to draw the
+ *    same palette, since one reads tokens and the other reads their numeric twins in
+ *    `scene/spectral.ts`.
+ *
+ * As everywhere on this surface, alpha variants are produced with `color-mix()` against a
+ * token rather than by writing a new literal (VISUAL_DESIGN.md §2).
+ */
+
+/* --- Stage ----------------------------------------------------------------
+   `.mk-scene` fills whatever positioned box the consuming section gives it. It sets no size
+   of its own: the hero and the auth panel have very different aspect ratios, and a scene that
+   imposed a height would fight both. */
+
+.mk-scene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  /* A stacking context of its own, so a section can layer copy above the scene with a plain
+     `z-index` without the canvas escaping through a later transform. */
+  isolation: isolate;
+}
+
+.mk-scene__stage {
+  position: absolute;
+  inset: 0;
+  /* The stage is transparent to the pointer so the hero's own copy, links and buttons are
+     never blocked by a full-bleed canvas sitting under them. */
+  pointer-events: none;
+  /* The frame has no hard rectangular edge: the scene fades out before it reaches the section
+     boundary, which is what stops a full-bleed canvas from reading as an embedded video
+     player. `currentcolor` here is alpha-only paint — a mask samples the alpha channel and
+     never the hue, so this is not a colour value. */
+  -webkit-mask-image: radial-gradient(
+    132% 116% at 56% 44%,
+    currentcolor 46%,
+    color-mix(in srgb, currentcolor 55%, transparent) 74%,
+    transparent 99%
+  );
+  mask-image: radial-gradient(
+    132% 116% at 56% 44%,
+    currentcolor 46%,
+    color-mix(in srgb, currentcolor 55%, transparent) 74%,
+    transparent 99%
+  );
+}
+
+.mk-scene--auth .mk-scene__stage {
+  /* The auth column is tall and narrow, so the fade is pulled into a vertical oval; the
+     horizontal one above would clip the composition at both sides. */
+  -webkit-mask-image: radial-gradient(
+    108% 128% at 50% 56%,
+    currentcolor 42%,
+    color-mix(in srgb, currentcolor 50%, transparent) 72%,
+    transparent 99%
+  );
+  mask-image: radial-gradient(
+    108% 128% at 50% 56%,
+    currentcolor 42%,
+    color-mix(in srgb, currentcolor 50%, transparent) 72%,
+    transparent 99%
+  );
+}
+
+/* Pointer events are re-enabled on the canvas alone. Click-to-probe needs them; scrolling
+   still works because nothing on this surface mounts `OrbitControls`, which is the thing that
+   would call `preventDefault()` on wheel. `touch-action` states the same guarantee for touch
+   explicitly rather than relying on it. */
+.mk-scene__stage canvas {
+  display: block;
+  pointer-events: auto;
+  touch-action: pan-y;
+}
+
+/* A last wash of the page ground over the scene's outer field. The mask above removes the
+   canvas edge; this puts the section's own colour back over what remains, so text laid on top
+   keeps its contrast without the scene having to be dimmed as a whole. */
+.mk-scene::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    124% 104% at 62% 40%,
+    transparent 0%,
+    transparent 48%,
+    color-mix(in srgb, var(--orca-void) 72%, transparent) 88%,
+    var(--orca-void) 100%
+  );
+}
+
+/* --- Scene description ----------------------------------------------------
+   The canvas is `aria-hidden`; this is what a screen reader gets instead. Visually hidden
+   rather than `display: none`, because the latter removes it from the accessibility tree too
+   and would leave the scene with no description at all. */
+
+.mk-scene__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+}
+
+/* --- Fallback shell -------------------------------------------------------- */
+
+.mk-scene__fallback-wrap {
+  position: absolute;
+  inset: 0;
+  opacity: 1;
+  transition: opacity var(--orca-dur-med) var(--orca-ease);
+}
+
+/* While the WebGL probe is still running the diagram is present and sized but invisible: the
+   box is already laid out, so resolving either way costs no layout shift, and a probe that
+   resolves to "available" one frame later never flashes a diagram at the reader. */
+.mk-scene__fallback-wrap.is-probing {
+  opacity: 0;
+}
+
+.mk-scene-fallback {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+/* --- Fallback: survey register --------------------------------------------- */
+
+.mk-scene-fallback__grid {
+  fill: none;
+  stroke: var(--orca-hairline);
+  stroke-width: 1;
+  opacity: 0.5;
+}
+
+.mk-scene-fallback__furniture line,
+.mk-scene-fallback__furniture path {
+  fill: none;
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1.4;
+}
+
+.mk-scene-fallback__leader {
+  stroke: var(--orca-hairline-strong);
+  stroke-width: 1.2;
+}
+
+/* --- Fallback: shells ------------------------------------------------------
+   The far half of each shell is dimmer than the near half. That difference is the diagram's
+   only depth cue for the shells, and it is the same cue the WebGL scene gets for free from
+   the planet occluding what passes behind it. */
+
+.mk-scene-fallback__shell {
+  fill: none;
+  stroke: var(--orca-spectral-2);
+  stroke-width: 1.5;
+  stroke-dasharray: 7 9;
+}
+
+.mk-scene-fallback__shell--far-1 {
+  opacity: 0.2;
+}
+.mk-scene-fallback__shell--far-2 {
+  opacity: 0.16;
+}
+.mk-scene-fallback__shell--far-3 {
+  opacity: 0.13;
+}
+
+.mk-scene-fallback__shell--near-1 {
+  opacity: 0.44;
+  stroke-dasharray: none;
+  stroke-width: 1.7;
+}
+.mk-scene-fallback__shell--near-2 {
+  opacity: 0.32;
+  stroke-dasharray: none;
+}
+.mk-scene-fallback__shell--near-3 {
+  opacity: 0.24;
+  stroke-dasharray: none;
+}
+
+/* --- Fallback: Earth -------------------------------------------------------
+   The body gradient is offset toward the key light rather than being split by a painted
+   terminator line, so the falloff is continuous the way real shading is. */
+
+/* Four stops that drop quickly into the ground colour. The lit ocean occupies a small part
+   of the disc and everything else is graphite and near-black: a planet rendered as a bright
+   saturated dome is the single fastest way to make this page look like stock artwork. */
+
+.mk-scene-fallback__body-core {
+  stop-color: var(--orca-primary);
+  stop-opacity: 0.92;
+}
+
+.mk-scene-fallback__body-lit {
+  stop-color: var(--orca-border);
+  stop-opacity: 1;
+}
+
+.mk-scene-fallback__body-mid {
+  stop-color: var(--orca-surface);
+  stop-opacity: 1;
+}
+
+/* Identical to the page ground, so the unlit limb has no edge at all and the planet ends in
+   darkness rather than in a visible circle. */
+.mk-scene-fallback__body-dark {
+  stop-color: var(--orca-void);
+  stop-opacity: 1;
+}
+
+.mk-scene-fallback__limb-clear {
+  stop-color: var(--orca-spectral-1);
+  stop-opacity: 0;
+}
+
+.mk-scene-fallback__limb-glow {
+  stop-color: var(--orca-band-leo);
+  stop-opacity: 0.26;
+}
+
+.mk-scene-fallback__limb-edge {
+  stroke: var(--orca-band-leo);
+  stroke-width: 1.2;
+  opacity: 0.26;
+}
+
+.mk-scene-fallback__graticule ellipse {
+  fill: none;
+  stroke: var(--orca-text);
+  stroke-width: 1.1;
+  opacity: 0.085;
+}
+
+/* --- Fallback: transfer arc ------------------------------------------------
+   The one saturated line in the frame. Everything else is held at low opacity precisely so
+   this reads as the only element carrying information. */
+
+.mk-scene-fallback__stop-1 {
+  stop-color: var(--orca-spectral-1);
+}
+.mk-scene-fallback__stop-2 {
+  stop-color: var(--orca-spectral-2);
+}
+.mk-scene-fallback__stop-3 {
+  stop-color: var(--orca-spectral-3);
+}
+.mk-scene-fallback__stop-4 {
+  stop-color: var(--orca-spectral-4);
+}
+.mk-scene-fallback__stop-5 {
+  stop-color: var(--orca-spectral-5);
+}
+.mk-scene-fallback__stop-6 {
+  stop-color: var(--orca-spectral-6);
+}
+
+.mk-scene-fallback__arc-bloom {
+  stroke-width: 13;
+  stroke-linecap: round;
+  opacity: 0.2;
+}
+
+.mk-scene-fallback__arc {
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 26 13;
+  animation: mk-scene-arc-march 3.2s linear infinite;
+}
+
+/* The dash marches from departure toward arrival. It is the only animation in the fallback,
+   and it encodes direction of travel — which end of the arc the vehicle is leaving. */
+@keyframes mk-scene-arc-march {
+  from {
+    stroke-dashoffset: 39;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* --- Fallback: nodes -------------------------------------------------------- */
+
+.mk-scene-fallback__node line {
+  stroke: var(--orca-spectral-6);
+  stroke-width: 1.6;
+  opacity: 0.82;
+}
+
+.mk-scene-fallback__node-ring {
+  fill: none;
+  stroke: var(--orca-spectral-6);
+  stroke-width: 1.4;
+  opacity: 0.55;
+}
+
+.mk-scene-fallback__apex circle {
+  fill: var(--orca-spectral-4);
+}
+
+.mk-scene-fallback__apex-ring {
+  fill: none;
+  stroke: var(--orca-spectral-4);
+  stroke-width: 1.2;
+  opacity: 0.45;
+}
+
+.mk-scene-fallback__status-dot {
+  fill: var(--orca-spectral-1);
+}
+
+/* --- Fallback: labels ------------------------------------------------------
+   Monospaced and letter-spaced: what makes a short string read as a telemetry channel name
+   rather than as a caption. Sizes are viewBox units, so they scale with the diagram. */
+
+.mk-scene-fallback__label text {
+  fill: var(--orca-text);
+  font-family: var(--orca-font-mono);
+  font-size: 13px;
+  letter-spacing: 1.6px;
+  opacity: 0.86;
+}
+
+.mk-scene-fallback__label text.mk-scene-fallback__label--dim {
+  fill: var(--orca-muted);
+  font-size: 12px;
+  opacity: 0.8;
+}
+
+.mk-scene-fallback__label text.mk-scene-fallback__label--accent {
+  fill: var(--orca-spectral-6);
+  font-size: 12px;
+}
+
+/* --- Reduced motion --------------------------------------------------------
+   The frame loop itself is gated in `OrbitalHeroScene`; what remains here is the CSS side.
+   Nothing is hidden — only movement is removed. */
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-scene-fallback__arc {
+    animation: none;
+  }
+
+  .mk-scene__fallback-wrap {
+    transition: none;
+  }
+}

@@ -1,0 +1,326 @@
+/**
+ * Persistent marketing navigation (.mk-nav-*).
+ *
+ * The bar is a glass plate over the scene rather than an opaque strip: the hero render passes
+ * under it, which is what keeps the page reading as one continuous instrument instead of a
+ * header sitting on top of a picture. It is delimited by a hairline, never a shadow.
+ *
+ * The full link rail and the disclosure panel are mutually exclusive at 1200px. No link is
+ * dropped to save room -- every section stays reachable from whichever of the two is showing,
+ * which is why the breakpoint is high: seven labels plus two actions genuinely need that width
+ * at telemetry tracking.
+ */
+
+/* Every in-page scroll target clears the sticky bar by more than the bar's own height, so a
+   section heading never lands underneath it. */
+.mk-page section[id] {
+  scroll-margin-top: var(--orca-space-8);
+}
+
+.mk-nav {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: var(--orca-glass);
+  backdrop-filter: blur(14px) saturate(130%);
+  -webkit-backdrop-filter: blur(14px) saturate(130%);
+  border-bottom: 1px solid var(--orca-hairline);
+}
+
+.mk-nav__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--orca-space-5);
+  padding-block: var(--orca-space-3);
+}
+
+/* --- Link rail ------------------------------------------------------------
+   Tracking is lighter here than on a telemetry label: these are navigation words, not channel
+   names, and 0.16em across seven of them costs more width than the register is worth. */
+
+.mk-nav__rail {
+  flex: 1 1 auto;
+  display: flex;
+  justify-content: center;
+  min-width: 0;
+}
+
+.mk-nav__list {
+  display: flex;
+  align-items: center;
+  gap: var(--orca-space-3);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.mk-nav__link {
+  position: relative;
+  display: block;
+  padding: var(--orca-space-2) var(--orca-space-1);
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-xs);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--orca-muted);
+  white-space: nowrap;
+  transition: color var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-nav__link:hover {
+  color: var(--orca-text);
+}
+
+/* The current-section indicator: a rule that grows from the left edge of the label. Scale
+   rather than width so it animates on the compositor and never reflows the rail. */
+.mk-nav__link::after {
+  content: '';
+  position: absolute;
+  left: var(--orca-space-1);
+  right: var(--orca-space-1);
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, var(--orca-spectral-1), var(--orca-spectral-3));
+  transform: scaleX(0);
+  transform-origin: left center;
+  transition: transform var(--orca-dur-med) var(--orca-ease);
+}
+
+.mk-nav__link.is-current {
+  color: var(--orca-text);
+}
+
+.mk-nav__link.is-current::after {
+  transform: scaleX(1);
+}
+
+/* --- Actions -------------------------------------------------------------- */
+
+.mk-nav__actions {
+  display: flex;
+  align-items: center;
+  gap: var(--orca-space-3);
+  flex: none;
+}
+
+.mk-nav__action {
+  display: inline-flex;
+}
+
+/* --- Disclosure toggle ----------------------------------------------------
+   Hidden above the breakpoint rather than merely unstyled: an offscreen toggle that still
+   takes a tab stop is a control the reader cannot see and cannot use. */
+
+.mk-nav__toggle {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: var(--orca-space-3);
+  /* The same 44px floor `auth.css` applies to its controls, on both axes. It matters most
+     here: below 380px the label is visually hidden, leaving only the 16px bar glyph, so
+     without a floor this is a ~30x42 control -- the smallest on the page, and the only route
+     to the navigation. Above that width the label makes the button wider than the minimum, so
+     `min-width` binds on the small screen alone. */
+  min-height: 44px;
+  min-width: 44px;
+  padding: var(--orca-space-2) var(--orca-space-3);
+  border: 1px solid var(--orca-hairline-strong);
+  border-radius: var(--orca-radius-sm);
+  background: transparent;
+  color: var(--orca-muted);
+  font-family: var(--orca-font-mono);
+  cursor: pointer;
+  transition: color var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-nav__toggle:hover {
+  color: var(--orca-text);
+}
+
+.mk-nav__toggle-text {
+  font-size: var(--orca-text-xs);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+}
+
+.mk-nav__toggle-bars {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 16px;
+  height: 11px;
+}
+
+.mk-nav__toggle-bars span {
+  display: block;
+  height: 1px;
+  background: currentcolor;
+  transition:
+    transform var(--orca-dur-fast) var(--orca-ease),
+    opacity var(--orca-dur-fast) var(--orca-ease);
+}
+
+.mk-nav__toggle-bars.is-open span:nth-child(1) {
+  transform: translateY(5px) rotate(45deg);
+}
+
+.mk-nav__toggle-bars.is-open span:nth-child(2) {
+  opacity: 0;
+}
+
+.mk-nav__toggle-bars.is-open span:nth-child(3) {
+  transform: translateY(-5px) rotate(-45deg);
+}
+
+/* --- Disclosure panel -----------------------------------------------------
+   Absolutely positioned under the bar so opening it never changes the height of the sticky
+   element -- a growing sticky header would shove the whole document down as the reader taps. */
+
+.mk-nav__panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  max-height: 72vh;
+  overflow-y: auto;
+  /* Opaque, not glass. The bar above it can be translucent because nothing needs to be read
+     through it; a menu that lets a display-sized headline show through its own links cannot be
+     read at all, and `backdrop-filter` is exactly the property a reader's browser is most
+     likely to have disabled. */
+  background: var(--orca-void-raised);
+  border-bottom: 1px solid var(--orca-hairline-strong);
+  animation: mk-nav-panel-in var(--orca-dur-med) var(--orca-ease) both;
+}
+
+.mk-nav__panel[hidden] {
+  display: none;
+}
+
+.mk-nav__panel-inner {
+  padding-block: var(--orca-space-5) var(--orca-space-6);
+}
+
+.mk-nav__panel-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--orca-hairline);
+}
+
+.mk-nav__panel-link {
+  display: block;
+  padding: var(--orca-space-4) 0;
+  border-bottom: 1px solid var(--orca-hairline);
+  font-family: var(--orca-font-mono);
+  font-size: var(--orca-text-sm);
+  letter-spacing: var(--orca-tracking-mono);
+  text-transform: uppercase;
+  text-decoration: none;
+  color: var(--orca-muted);
+}
+
+.mk-nav__panel-link.is-current {
+  color: var(--orca-text);
+  /* The rail's indicator is an underline; in a stacked list the same signal has to be a left
+     marker, because every row already has a rule under it. */
+  box-shadow: inset 2px 0 0 0 var(--orca-spectral-1);
+  padding-left: var(--orca-space-4);
+}
+
+.mk-nav__panel-actions {
+  display: grid;
+  gap: var(--orca-space-3);
+  margin-top: var(--orca-space-5);
+}
+
+@keyframes mk-nav-panel-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, -6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* --- Breakpoints ---------------------------------------------------------- */
+
+@media (max-width: 1199px) {
+  .mk-nav__rail {
+    display: none;
+  }
+
+  /* Sign-in moves into the panel; requesting access stays in the bar as long as it fits, since
+     it is the one action a first-time reader is most likely to want. */
+  .mk-nav__action--signin {
+    display: none;
+  }
+
+  .mk-nav__toggle {
+    display: inline-flex;
+  }
+}
+
+@media (min-width: 1200px) {
+  .mk-nav__panel {
+    display: none;
+  }
+}
+
+@media (max-width: 599px) {
+  .mk-nav__action--access {
+    display: none;
+  }
+
+  .mk-nav__inner {
+    gap: var(--orca-space-3);
+  }
+}
+
+@media (max-width: 380px) {
+  /* At this width the word costs more space than it explains, so the bars carry it visually.
+     The text is hidden from the eye and NOT from the accessibility tree: this button has no
+     `aria-label`, so its name is computed from its contents, and `display: none` here would
+     leave the only route to the whole navigation announced as an unnamed button (WCAG 2.1
+     SC 4.1.2). The same clip-path idiom as `.mk-scene__sr` and `.mk-auth-vh`.
+
+     An `aria-label` would be the wrong repair: it would override the visible "Menu"/"Close"
+     above this breakpoint, where the word IS shown, and a label that does not contain the
+     visible text fails SC 2.5.3 for speech input. Hiding visually keeps the two identical at
+     every width. */
+  .mk-nav__toggle-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+}
+
+/* --- Reduced motion ------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .mk-nav__link,
+  .mk-nav__link::after,
+  .mk-nav__toggle,
+  .mk-nav__toggle-bars span {
+    transition: none;
+  }
+
+  .mk-nav__panel {
+    animation: none;
+  }
+
+  /* The indicator must still be visible: only its arrival is removed, not the state it
+     reports. */
+  .mk-nav__link.is-current::after {
+    transform: scaleX(1);
+  }
+}

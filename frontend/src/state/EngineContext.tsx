@@ -48,7 +48,14 @@ const FORCE_DEMO = import.meta.env.VITE_DEMO_MODE === '1';
  * lands mid-scenario, with missions in flight and some already completed. */
 const DEMO_START_SEC = 7_200;
 
-const DEMO_TICK_MS = 1_000;
+/** Four snapshots a second. At one a second, a satellite at 16x crosses ~120 km of orbit per
+ * step and visibly jumps; at four it reads as motion. */
+const DEMO_TICK_MS = 250;
+
+/** The browser model opens at 16x. At 1x a LEO satellite moves about a pixel a minute on a
+ * laptop screen, so the scene looked frozen — the most common reading of it was "broken". The
+ * speed control still offers every engine multiplier, including 1x. */
+const DEMO_DEFAULT_SPEED = 16;
 
 interface EngineContextValue {
   /** Exposed (not just used internally) so pages that need a REST call outside the
@@ -110,7 +117,7 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
    * it every frame-ish interval and only the derived snapshot needs to re-render. */
   const demoTimeRef = useRef(DEMO_START_SEC);
   const demoStatusRef = useRef<'RUNNING' | 'PAUSED'>('RUNNING');
-  const demoSpeedRef = useRef(1);
+  const demoSpeedRef = useRef(DEMO_DEFAULT_SPEED);
   /** Mission id -> profile name for every live re-score requested in demo mode. */
   const demoRescoreRef = useRef(new Map<string, string>());
 

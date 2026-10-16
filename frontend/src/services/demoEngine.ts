@@ -27,6 +27,7 @@
  * a reviewer can be pointed at a timestamp and see what the author saw.
  */
 
+import { legArc } from '../visualization/trajectories/legArc';
 import type {
   AlgorithmRunView,
   DebrisView,
@@ -255,8 +256,25 @@ interface EmergencyState {
   readonly satellite: SatelliteSeed;
 }
 
-const RESPONSE_WINDOW_SEC = 5_400;
-const MISSION_DURATION_SEC = 3_000;
+/** Survival window by failure kind: a satellite losing fuel has least time, one that has only
+ * lost its link has most. A per-satellite offset keeps two failures of the same kind apart. */
+const KIND_WINDOW_SEC: Readonly<Record<string, number>> = {
+  FUEL_CRITICAL: 4_500,
+  POWER_FAILURE: 5_100,
+  PROPULSION_FAILURE: 5_700,
+  THERMAL: 6_000,
+  COMMS_LOSS: 6_600,
+};
+
+function responseWindowFor(satellite: SatelliteSeed): number {
+  return (KIND_WINDOW_SEC[satellite.failKind] ?? 5_400) + (Math.abs(Math.floor(satellite.seed)) % 5) * 120;
+}
+
+/** Transfer time to a satellite: longer for a target farther from the fleet's 600 km shell, plus
+ * a per-satellite phasing wait. Between 40 and about 62 minutes, always inside the window. */
+function missionDurationFor(satellite: SatelliteSeed): number {
+  return 2_400 + (Math.abs(Math.floor(satellite.seed)) % 7) * 180 + Math.round(Math.abs(satellite.altitudeKm - 600));
+}
 
 /** The engine's `Severity` scale: LOW | MODERATE | HIGH | CRITICAL. */
 function severityFor(remainingSec: number): string {
@@ -278,7 +296,9 @@ function emergenciesAt(timeSec: number): readonly EmergencyState[] {
     // that can still be open. Earlier occurrences are history and belong to the event feed.
     const occurrence = Math.floor((timeSec - satellite.failAtSec) / satellite.recurrenceSec);
     const detectedAtSec = satellite.failAtSec + occurrence * satellite.recurrenceSec;
-    const deadlineSec = detectedAtSec + RESPONSE_WINDOW_SEC;
+    const windowSec = responseWindowFor(satellite);
+    const durationSec = missionDurationFor(satellite);
+    const deadlineSec = detectedAtSec + windowSec;
     const remainingWindowSec = Math.max(0, deadlineSec - timeSec);
     const elapsed = timeSec - detectedAtSec;
 
@@ -287,9 +307,9 @@ function emergenciesAt(timeSec: number): readonly EmergencyState[] {
     // The engine's `EmergencyState`: PENDING until a vehicle is assigned, ASSIGNED while it
     // transfers, IN_PROGRESS on its final leg, RESOLVED once rendezvous completes.
     const state =
-      elapsed > MISSION_DURATION_SEC + 240
+      elapsed > durationSec + 240
         ? 'RESOLVED'
-        : elapsed > 180 + MISSION_DURATION_SEC / 2
+        : elapsed > 180 + durationSec / 2
           ? 'IN_PROGRESS'
           : elapsed > 180
             ? 'ASSIGNED'
@@ -306,7 +326,7 @@ function emergenciesAt(timeSec: number): readonly EmergencyState[] {
         detectedAtSec,
         deadlineSec,
         remainingWindowSec: round(remainingWindowSec, 1),
-        urgency: round(clamp01(1 - remainingWindowSec / RESPONSE_WINDOW_SEC), 4),
+        urgency: round(clamp01(1 - remainingWindowSec / windowSec), 4),
       },
     });
   }
@@ -328,7 +348,13 @@ function objective(
  * dominated interior points so the Optimization Lab's dominance filter has something to filter,
  * and exactly one recommended point.
  */
-function paretoFrontFor(missionSeed: number, pass: number, baseDeltaV: number): ParetoPointView[] {
+function paretoFrontFor(
+  missionSeed: number,
+  pass: number,
+  baseDeltaV: number,
+  durationSec: number,
+  budgetKms: number,
+): ParetoPointView[] {
   const random = lcg(Math.round(missionSeed * 7_919 + pass * 104_729));
   const points: ParetoPointView[] = [];
   const count = pass === 1 ? 6 : 1;
@@ -337,8 +363,11 @@ function paretoFrontFor(missionSeed: number, pass: number, baseDeltaV: number): 
     const t = count === 1 ? 0.5 : i / (count - 1);
     // Fuel falls as time rises: the hyperbolic relationship a Hohmann-versus-fast-transfer
     // trade actually has, not a straight line.
-    const timeSec = 900 + t * 3_600;
-    const fuel = baseDeltaV * (1.45 - 0.55 * Math.sqrt(t));
+    // Spread around the transfer actually flown, so the recommended plan and the mission on
+    // screen describe the same rescue. Fuel is a fraction of the vehicle's own Δv budget, which
+    // is the unit the engine's `ObjectiveVector::fuel` uses.
+    const timeSec = durationSec * (0.55 + t * 1.1);
+    const fuel = (baseDeltaV / budgetKms) * (1.45 - 0.55 * Math.sqrt(t));
     const risk = 0.08 + 0.26 * t + random() * 0.05;
     const distance = 1_200 + t * 5_400 + random() * 400;
     points.push({
@@ -413,7 +442,7 @@ function legsFor(
   timeSec: number,
 ): MissionLegView[] {
   const legCount = 2;
-  const legDuration = MISSION_DURATION_SEC / legCount;
+  const legDuration = missionDurationFor(satellite) / legCount;
   const out: MissionLegView[] = [];
 
   // Leg 1 is a phasing burn to an intermediate altitude; leg 2 is the rendezvous. Two legs is
@@ -422,6 +451,7 @@ function legsFor(
 
   for (let i = 0; i < legCount; i += 1) {
     const departureTimeSec = startedAtSec + i * legDuration;
+    const previous = out[i - 1];
     const arrivalTimeSec = departureTimeSec + legDuration;
     const fromAlt = i === 0 ? vehicle.altitudeKm : midAltitude;
     const toAlt = i === 0 ? midAltitude : satellite.altitudeKm;
@@ -429,13 +459,11 @@ function legsFor(
     out.push({
       fromEntityId: i === 0 ? vehicle.id : `WAYPOINT-${vehicle.id}-1`,
       toEntityId: i === legCount - 1 ? satellite.id : `WAYPOINT-${vehicle.id}-1`,
-      fromPosition: positionFor(
-        fromAlt,
-        vehicle.inclinationDeg,
-        vehicle.raanDeg,
-        vehicle.phaseDeg,
-        departureTimeSec,
-      ),
+      // A leg starts where the one before it ended. Placing the waypoint independently on each
+      // side left a visible gap between the two arcs of every rescue.
+      fromPosition:
+        previous?.toPosition ??
+        positionFor(fromAlt, vehicle.inclinationDeg, vehicle.raanDeg, vehicle.phaseDeg, departureTimeSec),
       toPosition: positionFor(
         toAlt,
         satellite.inclinationDeg,
@@ -454,6 +482,25 @@ function legsFor(
   return out;
 }
 
+/** How finely a transferring vehicle's position follows the drawn leg. */
+const LEG_SAMPLES = 240;
+
+/**
+ * Where a vehicle is part-way along a leg: the point at `progress` on the very curve Mission
+ * Control draws for that leg (`legArc`), so the vehicle's marker rides its own transfer instead
+ * of continuing round its parking orbit beside it.
+ */
+function onLeg(leg: MissionLegView | undefined, progress: number): PositionView | null {
+  if (leg === undefined) return null;
+  const arc = legArc(
+    [leg.fromPosition.x, leg.fromPosition.y, leg.fromPosition.z],
+    [leg.toPosition.x, leg.toPosition.y, leg.toPosition.z],
+    LEG_SAMPLES,
+  );
+  const point = arc[Math.round(clamp01(progress) * (arc.length - 1))];
+  return point === undefined ? null : { x: round(point[0], 3), y: round(point[1], 3), z: round(point[2], 3) };
+}
+
 function missionsAt(timeSec: number, states: readonly EmergencyState[]): MissionView[] {
   const out: MissionView[] = [];
 
@@ -465,33 +512,34 @@ function missionsAt(timeSec: number, states: readonly EmergencyState[]): Mission
     const vehicle = VEHICLES[index % VEHICLES.length];
     if (vehicle === undefined) return;
     const elapsed = timeSec - startedAtSec;
-    const completedAtSec = startedAtSec + MISSION_DURATION_SEC;
+    const durationSec = missionDurationFor(satellite);
+    const completedAtSec = startedAtSec + durationSec;
     const complete = timeSec >= completedAtSec;
     const legs = legsFor(vehicle, satellite, startedAtSec, timeSec);
     const totalDeltaV = legs.reduce((sum, leg) => sum + leg.deltaVKms, 0);
 
     // Every third mission replans once, a third of the way in -- the case the Pareto history
     // and the explanation string exist to show.
-    const replans = index % 3 === 2 && elapsed > MISSION_DURATION_SEC / 3 ? 1 : 0;
+    const replans = index % 3 === 2 && elapsed > durationSec / 3 ? 1 : 0;
     const history: {
       readonly planningPass: number;
       readonly timestampSec: number;
       readonly points: readonly ParetoPointView[];
     }[] = [
-      { planningPass: 1, timestampSec: round(startedAtSec, 1), points: paretoFrontFor(index + 1, 1, totalDeltaV) },
+      { planningPass: 1, timestampSec: round(startedAtSec, 1), points: paretoFrontFor(index + 1, 1, totalDeltaV, durationSec, vehicle.deltaVBudgetKms) },
       ...(replans > 0
         ? [
             {
               planningPass: 2,
-              timestampSec: round(startedAtSec + MISSION_DURATION_SEC / 3, 1),
-              points: paretoFrontFor(index + 1, 2, totalDeltaV * 1.08),
+              timestampSec: round(startedAtSec + durationSec / 3, 1),
+              points: paretoFrontFor(index + 1, 2, totalDeltaV * 1.08, durationSec, vehicle.deltaVBudgetKms),
             },
           ]
         : []),
     ];
 
-    const currentLeg = Math.min(legs.length - 1, Math.floor(elapsed / (MISSION_DURATION_SEC / legs.length)));
-    const legSpan = MISSION_DURATION_SEC / legs.length;
+    const currentLeg = Math.min(legs.length - 1, Math.floor(elapsed / (durationSec / legs.length)));
+    const legSpan = durationSec / legs.length;
 
     out.push({
       id: `MSN-${String(index + 1).padStart(3, '0')}`,
@@ -502,15 +550,15 @@ function missionsAt(timeSec: number, states: readonly EmergencyState[]): Mission
       state: complete
         ? 'SUCCESS'
         : replans > 0 &&
-            elapsed >= MISSION_DURATION_SEC / 3 &&
-            elapsed < MISSION_DURATION_SEC / 3 + 60
+            elapsed >= durationSec / 3 &&
+            elapsed < durationSec / 3 + 60
           ? 'REPLANNING'
-          : elapsed > MISSION_DURATION_SEC * 0.85
+          : elapsed > durationSec * 0.85
             ? 'RENDEZVOUS'
             : 'IN_TRANSIT',
       currentLeg,
       progressOnLeg: complete ? 1 : round(clamp01((elapsed - currentLeg * legSpan) / legSpan), 4),
-      deltaVSpentKms: round(totalDeltaV * clamp01(elapsed / MISSION_DURATION_SEC), 4),
+      deltaVSpentKms: round(totalDeltaV * clamp01(elapsed / durationSec), 4),
       replanCount: replans,
       startedAtSec: round(startedAtSec, 1),
       completedAtSec: complete ? round(completedAtSec, 1) : null,
@@ -520,7 +568,7 @@ function missionsAt(timeSec: number, states: readonly EmergencyState[]): Mission
       activeRescoreProfile: null,
       explanation:
         replans > 0
-          ? `Replanned at T+${Math.round(startedAtSec + MISSION_DURATION_SEC / 3)}s: a newly ` +
+          ? `Replanned at T+${Math.round(startedAtSec + durationSec / 3)}s: a newly ` +
             `detected debris conjunction raised the risk objective on leg 2 above the 0.35 ` +
             `abort threshold. The label-setting search returned a longer, lower-risk route ` +
             `costing ${round(totalDeltaV * 0.08, 3)} km/s more delta-V, which remained inside ` +
@@ -549,7 +597,7 @@ function eventsAt(
       emergencyId: emergency.id,
       missionId: null,
       debrisId: null,
-      detail: `${satellite.name} reported ${emergency.kind.replace(/_/g, ' ').toLowerCase()}; response window ${Math.round(RESPONSE_WINDOW_SEC / 60)} min.`,
+      detail: `${satellite.name} reported ${emergency.kind.replace(/_/g, ' ').toLowerCase()}; response window ${Math.round(responseWindowFor(satellite) / 60)} min.`,
     });
   }
 
@@ -570,7 +618,7 @@ function eventsAt(
       out.push({
         id: `EVT-RPL-${mission.id}`,
         kind: 'MISSION_REPLAN',
-        timestampSec: round(mission.startedAtSec + MISSION_DURATION_SEC / 3, 1),
+        timestampSec: round(mission.paretoHistory[1]?.timestampSec ?? mission.startedAtSec, 1),
         satelliteId: null,
         vehicleId: mission.vehicleId,
         emergencyId: mission.emergencyId,
@@ -853,10 +901,10 @@ export function demoSnapshot({
       },
       fuelFraction: round(clamp01(0.42 + drift(seed.seed, timeSec, 0.1) + 0.3), 4),
       health: {
-        power: round(clamp01(base(0) - (seed.failKind === 'POWER_DEGRADATION' ? degradation : 0)), 4),
-        propulsion: round(clamp01(base(1) - (seed.failKind === 'PROPULSION_LEAK' ? degradation : 0)), 4),
+        power: round(clamp01(base(0) - (seed.failKind === 'POWER_FAILURE' ? degradation : 0)), 4),
+        propulsion: round(clamp01(base(1) - ((seed.failKind === 'PROPULSION_FAILURE' || seed.failKind === 'FUEL_CRITICAL') ? degradation : 0)), 4),
         comms: round(clamp01(base(2) - (seed.failKind === 'COMMS_LOSS' ? degradation : 0)), 4),
-        thermal: round(clamp01(base(3) - (seed.failKind === 'THERMAL_RUNAWAY' ? degradation : 0)), 4),
+        thermal: round(clamp01(base(3) - (seed.failKind === 'THERMAL' ? degradation : 0)), 4),
       },
       activeEmergencyId:
         emergency && emergency.emergency.state !== 'RESOLVED' ? emergency.emergency.id : null,
@@ -878,7 +926,10 @@ export function demoSnapshot({
       // The engine's `VehicleStatus`: IDLE when free, TRANSFERRING with a mission, ON_STATION
       // during rendezvous.
       status: mission ? (mission.state === 'RENDEZVOUS' ? 'ON_STATION' : 'TRANSFERRING') : 'IDLE',
-      position: positionFor(seed.altitudeKm, seed.inclinationDeg, seed.raanDeg, seed.phaseDeg, timeSec),
+      position: mission
+        ? onLeg(mission.legs[mission.currentLeg], mission.progressOnLeg) ??
+          positionFor(seed.altitudeKm, seed.inclinationDeg, seed.raanDeg, seed.phaseDeg, timeSec)
+        : positionFor(seed.altitudeKm, seed.inclinationDeg, seed.raanDeg, seed.phaseDeg, timeSec),
       orbit: {
         altitudeKm: seed.altitudeKm,
         inclinationDeg: seed.inclinationDeg,

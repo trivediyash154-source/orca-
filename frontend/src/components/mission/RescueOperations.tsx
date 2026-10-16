@@ -125,11 +125,15 @@ export function RescueOperations() {
       (mission && snapshot.emergencies.find((e) => e.id === mission.emergencyId)) ?? unserved;
 
     const vehicle = mission ? snapshot.rescueVehicles.find((v) => v.id === mission.vehicleId) ?? null : null;
+    // The casualty's name where the snapshot carries one; the dashboard names satellites, and
+    // the same satellite read as an ID here looked like a different object.
+    const subjectName =
+      (emergency && snapshot.satellites.find((s) => s.id === emergency.subjectId)?.name) ?? emergency?.subjectId ?? null;
     const front = mission?.paretoFront ?? [];
     const chosen = front.find((p) => p.recommended) ?? null;
     const alternatives = front.filter((p) => !p.recommended);
 
-    return { mission, emergency, vehicle, chosen, alternatives, unserved, missionByEmergency };
+    return { mission, emergency, vehicle, subjectName, chosen, alternatives, unserved, missionByEmergency };
   }, [snapshot]);
 
   if (!snapshot) {
@@ -179,7 +183,7 @@ export function RescueOperations() {
                     className="rescue-subject"
                     onClick={() => select({ kind: 'satellite', id: op.emergency!.subjectId })}
                   >
-                    {op.emergency.subjectId}
+                    {op.subjectName}
                   </button>{' '}
                   suffered a <strong>{humanKind(op.emergency.kind).toLowerCase()}</strong>, rated{' '}
                   <strong>{op.emergency.severity.toLowerCase()}</strong>.
@@ -350,9 +354,9 @@ export function RescueOperations() {
               <span className="rescue-step-label">Outcome</span>
               <p className={`rescue-outcome outcome-${op.mission.state.toLowerCase()}`}>
                 {op.mission.state === 'SUCCESS'
-                  ? `${op.emergency?.subjectId ?? 'The target'} was rescued.`
+                  ? `${op.subjectName ?? 'The target'} was rescued.`
                   : op.mission.state === 'FAILED'
-                    ? `The mission failed; ${op.emergency?.subjectId ?? 'the target'} was not recovered.`
+                    ? `The mission failed; ${op.subjectName ?? 'the target'} was not recovered.`
                     : op.mission.state === 'ABORTED'
                       ? 'The mission was aborted.'
                       : 'The mission is still under way.'}

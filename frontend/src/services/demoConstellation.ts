@@ -37,22 +37,24 @@ const SHELLS: readonly Shell[] = [
   { altitudeKm: 35_786, inclinationDeg: 0.1, band: 'GEO', share: 0.04 },
 ];
 
-const cache = new Map<string, VisualConstellationSnapshot>();
+/** Orbital elements, generated once per (family, size, seed). Positions are a pure function of
+ * these and the time, so animating the constellation re-evaluates positions only: the 5,000
+ * objects keep their identity, plane and slot from frame to frame, and nothing is regenerated. */
+interface Elements {
+  readonly satellites: readonly Omit<VisualObjectView, 'position'>[];
+  readonly vehicles: readonly Omit<VisualObjectView, 'position'>[];
+  readonly debris: readonly Omit<VisualObjectView, 'position'>[];
+}
 
-export function demoVisualConstellation(
-  size: number,
-  seed: number,
-  timeSec: number,
-  family = 'visualShell',
-): VisualConstellationSnapshot {
-  const key = `${family}:${size}:${seed}:${timeSec}`;
-  const hit = cache.get(key);
+const elementCache = new Map<string, Elements>();
+
+function elementsFor(size: number, seed: number, family: string): Elements {
+  const key = `${family}:${size}:${seed}`;
+  const hit = elementCache.get(key);
   if (hit !== undefined) return hit;
 
-  const started = typeof performance === 'undefined' ? 0 : performance.now();
   const random = lcg(0x5_be11 ^ (seed * 2_654_435_761));
-
-  const satellites: VisualObjectView[] = [];
+  const satellites: Omit<VisualObjectView, 'position'>[] = [];
   let index = 0;
 
   for (const shell of SHELLS) {
@@ -69,18 +71,14 @@ export function demoVisualConstellation(
       const raanDeg = (plane * 360) / planes + random() * 0.6;
       for (let slot = 0; slot < perPlane && satellites.length < size * 0.92; slot += 1) {
         index += 1;
-        const phaseDeg = (slot * 360) / perPlane + plane * phasing + random() * 0.8;
-        const altitudeKm = shell.altitudeKm + (random() - 0.5) * (shell.band === 'LEO' ? 12 : 60);
-        const inclinationDeg = shell.inclinationDeg + (random() - 0.5) * 0.4;
         satellites.push({
           id: `VIS-${String(index).padStart(5, '0')}`,
           name: `${shell.band}-${Math.round(shell.altitudeKm)}-P${plane + 1}-S${slot + 1}`,
           status: random() < 0.015 ? 'WARNING' : 'NOMINAL',
-          position: positionFor(altitudeKm, inclinationDeg, raanDeg, phaseDeg, timeSec),
-          altitudeKm,
-          inclinationDeg,
+          altitudeKm: shell.altitudeKm + (random() - 0.5) * (shell.band === 'LEO' ? 12 : 60),
+          inclinationDeg: shell.inclinationDeg + (random() - 0.5) * 0.4,
           raanDeg,
-          phaseDeg,
+          phaseDeg: (slot * 360) / perPlane + plane * phasing + random() * 0.8,
           band: shell.band,
         });
       }
@@ -88,41 +86,57 @@ export function demoVisualConstellation(
   }
 
   const vehicleCount = Math.max(3, Math.round(size / 400));
-  const vehicles: VisualObjectView[] = Array.from({ length: vehicleCount }, (_, i) => {
-    const altitudeKm = 520 + random() * 300;
-    const inclinationDeg = 45 + random() * 50;
-    const raanDeg = random() * 360;
-    const phaseDeg = random() * 360;
-    return {
-      id: `VIS-RV-${String(i + 1).padStart(3, '0')}`,
-      name: `RESCUE-${i + 1}`,
-      status: 'IDLE',
-      position: positionFor(altitudeKm, inclinationDeg, raanDeg, phaseDeg, timeSec),
-      altitudeKm,
-      inclinationDeg,
-      raanDeg,
-      phaseDeg,
-      band: 'LEO',
-    };
-  });
+  const vehicles = Array.from({ length: vehicleCount }, (_, i) => ({
+    id: `VIS-RV-${String(i + 1).padStart(3, '0')}`,
+    name: `RESCUE-${i + 1}`,
+    status: 'IDLE',
+    altitudeKm: 520 + random() * 300,
+    inclinationDeg: 45 + random() * 50,
+    raanDeg: random() * 360,
+    phaseDeg: random() * 360,
+    band: 'LEO',
+  }));
 
-  const debrisCount = Math.round(size * 0.08);
-  const debris: VisualObjectView[] = Array.from({ length: debrisCount }, (_, i) => {
-    const altitudeKm = 450 + random() * 900;
-    const inclinationDeg = random() * 100;
-    const raanDeg = random() * 360;
-    const phaseDeg = random() * 360;
-    return {
-      id: `VIS-DEB-${String(i + 1).padStart(5, '0')}`,
-      position: positionFor(altitudeKm, inclinationDeg, raanDeg, phaseDeg, timeSec),
-      altitudeKm,
-      inclinationDeg,
-      raanDeg,
-      phaseDeg,
-      band: 'LEO',
-      hazardRadiusKm: 5 + random() * 30,
-    };
-  });
+  const debris = Array.from({ length: Math.round(size * 0.08) }, (_, i) => ({
+    id: `VIS-DEB-${String(i + 1).padStart(5, '0')}`,
+    altitudeKm: 450 + random() * 900,
+    inclinationDeg: random() * 100,
+    raanDeg: random() * 360,
+    phaseDeg: random() * 360,
+    band: 'LEO',
+    hazardRadiusKm: 5 + random() * 30,
+  }));
+
+  const elements: Elements = { satellites, vehicles, debris };
+  // Bounded: a reader stepping through sizes and seeds should not accumulate every variant.
+  if (elementCache.size > 8) elementCache.clear();
+  elementCache.set(key, elements);
+  return elements;
+}
+
+/** Places a set of elements at `timeSec` on its circular orbit. The phase reported is the phase
+ * at that time, so the object detail panel and the drawn position agree. */
+function place(
+  objects: readonly Omit<VisualObjectView, 'position'>[],
+  timeSec: number,
+): VisualObjectView[] {
+  return objects.map((o) => ({
+    ...o,
+    position: positionFor(o.altitudeKm ?? 550, o.inclinationDeg ?? 0, o.raanDeg ?? 0, o.phaseDeg ?? 0, timeSec),
+  }));
+}
+
+export function demoVisualConstellation(
+  size: number,
+  seed: number,
+  timeSec: number,
+  family = 'visualShell',
+): VisualConstellationSnapshot {
+  const started = typeof performance === 'undefined' ? 0 : performance.now();
+  const elements = elementsFor(size, seed, family);
+  const satellites = place(elements.satellites, timeSec);
+  const vehicles = place(elements.vehicles, timeSec);
+  const debris = place(elements.debris, timeSec);
 
   const snapshot: VisualConstellationSnapshot = {
     type: 'visualConstellation',
@@ -138,8 +152,5 @@ export function demoVisualConstellation(
     debris,
   };
 
-  // Bounded: a reader stepping through sizes and seeds should not accumulate every variant.
-  if (cache.size > 12) cache.clear();
-  cache.set(key, snapshot);
   return snapshot;
 }

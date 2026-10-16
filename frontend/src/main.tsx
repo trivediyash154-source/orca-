@@ -7,6 +7,8 @@ import { createRoot } from 'react-dom/client';
 // base layer they specialise. Nothing collides today -- the two surfaces are namespaced apart --
 // but the cascade should read in the order the layers are meant to apply, not in whatever order
 // the module graph happened to resolve.
+import '@fontsource-variable/space-grotesk';
+import '@fontsource-variable/jetbrains-mono';
 import './styles/app.css';
 import { App } from './App';
 import { orcaAuthAdapter } from './auth/authAdapter';

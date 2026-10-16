@@ -21,7 +21,7 @@ import type { VisualObjectView } from '../../types/engine';
  * visualization"). */
 export function MissionControlPage() {
   const { proximityMode, setProximityMode, constellationSize } = useUI();
-  const { dataSource } = useEngine();
+  const { dataSource, selected } = useEngine();
   const [focusNonce, setFocusNonce] = useState(0);
   const [focusTarget, setFocusTarget] = useState<CameraFocus>('earth');
   const [syntheticObject, setSyntheticObject] = useState<VisualObjectView | null>(null);
@@ -43,7 +43,17 @@ export function MissionControlPage() {
 
         <div className="scene-overlay scene-overlay-top">
           <button onClick={() => focus('earth')}>Reset View</button>
-          <button onClick={() => focus('selected')}>Focus Selected</button>
+          <button
+            onClick={() => focus('selected')}
+            disabled={selected === null && syntheticObject === null}
+            title={
+              selected === null && syntheticObject === null
+                ? 'Click a satellite or vehicle in the scene first'
+                : 'Frame the selected object'
+            }
+          >
+            Focus Selected
+          </button>
           <button onClick={() => focus('mission')}>Focus Mission</button>
           <label className="scene-overlay-toggle">
             <input

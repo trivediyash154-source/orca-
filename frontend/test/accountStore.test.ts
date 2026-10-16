@@ -6,12 +6,11 @@
  * silently overwriting an existing one, and a Google sign-in clobbering the password an email
  * account was created with.
  *
- * `node:crypto`'s WebCrypto is installed onto `globalThis` because jsdom does not provide
- * `crypto.subtle`, and the store deliberately refuses to run without it rather than falling
- * back to a weaker hash.
+ * They rely on the runtime's WebCrypto (`globalThis.crypto.subtle`, present in every Node the
+ * toolchain supports). The store deliberately refuses to run without it rather than falling
+ * back to a weaker hash, so a missing `subtle` fails these tests loudly instead of passing on a
+ * downgraded path.
  */
-
-import { webcrypto } from 'node:crypto';
 
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -25,10 +24,6 @@ import {
   signInWithGoogleProfile,
   signInWithPassword,
 } from '../src/auth/accountStore';
-
-if (globalThis.crypto?.subtle === undefined) {
-  Object.defineProperty(globalThis, 'crypto', { value: webcrypto, configurable: true });
-}
 
 const PASSWORD = 'a reasonably long passphrase';
 

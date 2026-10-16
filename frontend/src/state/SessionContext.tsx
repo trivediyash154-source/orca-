@@ -15,6 +15,7 @@ import type { ReactNode } from 'react';
 
 import { clearSession, readSession } from '../auth/accountStore';
 import type { SessionUser } from '../auth/accountStore';
+import { serverSessionValid, serverSignOut } from '../auth/serverAuth';
 
 export interface SessionContextValue {
   readonly user: SessionUser | null;
@@ -37,11 +38,30 @@ export function SessionProvider({ children }: { readonly children: ReactNode }) 
   }, []);
 
   const signOut = useCallback(() => {
+    // The service's cookie is the real credential for a server session; ending only the local
+    // mirror would leave the next page load able to sign straight back in.
+    if (readSession()?.source === 'server') void serverSignOut();
     clearSession();
     setUser(null);
     if (typeof window !== 'undefined') {
       window.location.hash = '#/';
     }
+  }, []);
+
+  // A server session can end while this mirror survives -- it expired, or was signed out from
+  // another device's cookie jar being cleared. Ask once on load; drop the mirror only on a
+  // definite "no", never because the service was unreachable.
+  useEffect(() => {
+    if (readSession()?.source !== 'server') return;
+    let cancelled = false;
+    void serverSessionValid().then((valid) => {
+      if (cancelled || valid !== false) return;
+      clearSession();
+      setUser(null);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {

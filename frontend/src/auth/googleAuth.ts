@@ -1,14 +1,18 @@
 /**
  * "Continue with Google", in both of the two situations a deployment can actually be in.
  *
- * ## 1. A Google OAuth client ID is configured (`VITE_GOOGLE_CLIENT_ID`)
+ * ## 1. A Google OAuth client ID is configured
  *
- * The real thing. Google Identity Services is loaded from `accounts.google.com`, and
+ * The real thing. The ID comes from the account service at runtime (`GOOGLE_CLIENT_ID` on the
+ * server, served by `/api/auth/config`) or from the build (`VITE_GOOGLE_CLIENT_ID`). Google
+ * Identity Services is loaded from `accounts.google.com`, and
  * `initTokenClient(...).requestAccessToken({ prompt: 'select_account' })` opens Google's own
  * account chooser in a popup. The reader picks an account; Google returns an access token
  * without asking for a password, because the browser's existing Google session is what is
- * being presented. The token is then exchanged for the profile at Google's `userinfo`
- * endpoint and discarded -- it is never stored, logged or sent anywhere else.
+ * being presented. With the account service present, the token goes to it and the service
+ * verifies it with Google -- including that it was issued for this site -- before creating a
+ * session. Without the service, the token is exchanged for the profile at Google's `userinfo`
+ * endpoint. Either way it is then discarded, never stored or logged.
  *
  * ## 2. No client ID is configured
  *
@@ -71,9 +75,6 @@ export function googleClientId(): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
-export function isRealGoogleConfigured(): boolean {
-  return googleClientId() !== null;
-}
 
 let scriptPromise: Promise<void> | null = null;
 
@@ -136,7 +137,8 @@ function loadGsi(): Promise<void> {
   return scriptPromise;
 }
 
-async function realGoogleFlow(clientId: string): Promise<GoogleProfile> {
+/** Opens Google's own account chooser and resolves with an access token for the chosen account. */
+export async function requestGoogleAccessToken(clientId: string): Promise<string> {
   await loadGsi();
   const api = globalThis.google?.accounts;
   if (!api) throw new GoogleAuthError('Google sign-in is unavailable in this browser.');
@@ -177,6 +179,12 @@ async function realGoogleFlow(clientId: string): Promise<GoogleProfile> {
     client.requestAccessToken({ prompt: 'select_account' });
   });
 
+  return token;
+}
+
+/** The profile behind an access token, from Google's `userinfo` endpoint. Used only when no
+ * account service is present to do the verification server-side. */
+export async function profileFromAccessToken(token: string): Promise<GoogleProfile> {
   const response = await fetch(USERINFO_URL, {
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -275,7 +283,7 @@ const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
  * The local chooser. Resolves with the chosen profile, rejects if the reader backs out --
  * deliberately the same contract as `realGoogleFlow`, so the adapter above has one code path.
  */
-function localChooserFlow(): Promise<GoogleProfile> {
+export function chooseLocalAccount(): Promise<GoogleProfile> {
   return new Promise<GoogleProfile>((resolve, reject) => {
     ensureChooserStyle();
 
@@ -449,7 +457,7 @@ function localChooserFlow(): Promise<GoogleProfile> {
       paragraph.textContent =
         'Device-local account chooser. This deployment has no Google OAuth client ID ' +
         'configured, so no request was made to Google and nothing was verified by Google. ' +
-        'Set VITE_GOOGLE_CLIENT_ID to use the real Google flow.';
+        "The site owner enables Google's own chooser by setting GOOGLE_CLIENT_ID.";
       return paragraph;
     }
 
@@ -464,11 +472,4 @@ function localChooserFlow(): Promise<GoogleProfile> {
     if (known.length > 0) renderList();
     else renderEntry();
   });
-}
-
-/** The single entry point the auth adapter calls. */
-export function chooseGoogleAccount(): Promise<GoogleProfile> {
-  const clientId = googleClientId();
-  if (clientId !== null) return realGoogleFlow(clientId);
-  return localChooserFlow();
 }

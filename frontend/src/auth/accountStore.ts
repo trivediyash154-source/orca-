@@ -44,6 +44,9 @@ export interface SessionUser {
   readonly provider: 'password' | 'google';
   readonly avatarUrl?: string;
   readonly signedInAtIso: string;
+  /** `'server'` when the account service issued the session (its HttpOnly cookie is the real
+   * credential and this record is a mirror for display); absent for a device-local session. */
+  readonly source?: 'server';
 }
 
 const ACCOUNTS_KEY = 'orca.accounts.v1';
@@ -301,6 +304,20 @@ function startSession(account: StoredAccount): SessionUser {
   } catch {
     // A session that cannot be persisted is still a valid session for this tab; the reader is
     // simply signed out on reload. Failing the sign-in over it would be worse.
+  }
+  return user;
+}
+
+/**
+ * Records a session the account service issued, so every surface that reads the session from
+ * storage -- the landing nav, the workspace guard, the top bar -- sees it without a second code
+ * path. The service's cookie stays the credential; this copy carries no secret.
+ */
+export function adoptSession(user: SessionUser): SessionUser {
+  try {
+    window.localStorage.setItem(SESSION_KEY, JSON.stringify(user));
+  } catch {
+    // As in `startSession`: valid for this tab even if it cannot be persisted.
   }
   return user;
 }

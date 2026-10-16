@@ -229,22 +229,35 @@ not a comment:
 
 ### 🚀 Deployment, authentication and the browser model
 
-The React frontend ([`frontend/`](frontend)) is a static bundle and deploys to Vercel with no
-server of its own. Two consequences are worth stating plainly, because both are visible in the
-product:
+The React frontend ([`frontend/`](frontend)) is a static bundle; accounts are served by one
+Vercel Function beside it ([`api/auth/[action].ts`](api/auth/%5Baction%5D.ts)).
 
-- **Accounts are real, and they are per-browser.** Sign-up derives a PBKDF2-HMAC-SHA-256 key
-  (210 000 iterations, 16-byte random salt per account) over the password and stores only the
-  salt and the derived key; sign-in repeats the derivation and compares in constant time
-  ([`frontend/src/auth/accountStore.ts`](frontend/src/auth/accountStore.ts)). No password is
-  ever stored or transmitted. There is no identity server in this repository, so an account
-  created in one browser does not exist in another — the UI says so rather than implying a
-  cloud account.
-- **"Continue with Google" is the real Google flow when a client ID is configured.** Set
-  `VITE_GOOGLE_CLIENT_ID` and the button opens Google's own account chooser and signs in with no
-  password, as on any other site. Without one — an OAuth client ID is issued per origin and
-  cannot be committed to a repository — it falls back to a device-local chooser that states, in
-  the dialog itself, that Google verified nothing. See [`frontend/.env.example`](frontend/.env.example).
+- **Accounts work from any device.** Sign-up hashes the password with scrypt (N = 2¹⁵, r = 8,
+  p = 1, 16-byte salt per account) and stores only the hash, in a private Vercel Blob store.
+  Sign-in repeats the derivation and compares in constant time; an unknown address and a wrong
+  password take the same time and get the same answer. The session is an HMAC-signed, expiring
+  token in an `HttpOnly`, `SameSite=Lax` cookie, so no script on the page can read it, and every
+  state-changing request must be same-origin.
+- **Off Vercel, accounts fall back to the browser.** Served by anything without the function
+  (`vite preview`, a plain static host), the app keeps accounts in the browser instead, as a
+  PBKDF2-HMAC-SHA-256 hash (210 000 iterations)
+  ([`frontend/src/auth/accountStore.ts`](frontend/src/auth/accountStore.ts)), and the sign-up
+  confirmation says which of the two happened. An account first made that way moves to the
+  server the next time it signs in on a deployment that has one.
+- **"Continue with Google" is Google's own sign-in once a client ID is set.** Google issues
+  OAuth client IDs per site, to the site's owner, so one cannot be committed to a repository.
+  To switch it on:
+  1. In [Google Cloud Console → Credentials](https://console.cloud.google.com/apis/credentials),
+     create an **OAuth client ID** of type **Web application**.
+  2. Under **Authorised JavaScript origins**, add the deployment's address (for example
+     `https://orca-orbital-rescue.vercel.app`) and `http://localhost:5173`.
+  3. Add the client ID to the Vercel project as the environment variable `GOOGLE_CLIENT_ID`,
+     then redeploy.
+
+  The button then opens Google's account chooser — pick an account, no password — and the
+  function verifies the returned token with Google, including that it was issued for this site,
+  before creating the session. Until then the button opens a device-local chooser that states,
+  in the dialog itself, that Google verified nothing.
 - **The workspace runs without the C++ engine.** `EngineProvider` probes the Node bridge, and
   when nothing answers it switches to an in-browser kinematic model
   ([`frontend/src/services/demoEngine.ts`](frontend/src/services/demoEngine.ts)): real

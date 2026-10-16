@@ -1,0 +1,22 @@
+{
+  "//": "Type-checks the Vercel Functions in api/. Deliberately not named tsconfig.json, so the platform compiles api/ with its own defaults rather than this no-emit config.",
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": [
+      "ES2022",
+      "DOM"
+    ],
+    "types": [
+      "node"
+    ],
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "skipLibCheck": true
+  },
+  "include": [
+    "api/**/*.ts"
+  ]
+}

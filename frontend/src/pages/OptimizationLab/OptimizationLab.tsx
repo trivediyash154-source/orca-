@@ -2,7 +2,9 @@ import { useState } from 'react';
 
 import { ParetoChart } from '../../charts/ParetoChart';
 import { useRelevantMission } from '../../components/mission/MissionIntelligence';
+import { PROFILE_WEIGHTS, recommendedPlanId, scorePoints } from '../../services/profileScoring';
 import { useEngine } from '../../state/EngineContext';
+import { ConstellationNetwork } from './ConstellationNetwork';
 
 /** The exact profile names `cpp/app/main.cpp`'s `resolveNamedProfile()` recognizes -- no
  * other string is a valid `rescoreParetoFront` command (brief §50). */
@@ -17,8 +19,19 @@ const PROFILES = [
  * `MissionScorer::selectRecommendedPlan()` applied directly by the engine) and Pareto
  * history across every retained planning pass. */
 export function OptimizationLabPage() {
-  const mission = useRelevantMission();
-  const { rescoreParetoFront, lastError } = useEngine();
+  const relevant = useRelevantMission();
+  const { snapshot, select, rescoreParetoFront, lastError } = useEngine();
+
+  // `useRelevantMission` declines to guess when several missions are in flight, which is right
+  // for Mission Intelligence's narrative but left this page blank whenever the fleet was busy.
+  // Here the reader can choose, so the page falls back to the first in-flight mission with a
+  // front and offers the rest in a picker.
+  const withFront = (snapshot?.missions ?? []).filter((m) => m.paretoFront.length > 0);
+  const mission =
+    relevant ??
+    withFront.find((m) => m.completedAtSec === null) ??
+    withFront[0] ??
+    null;
   const [pending, setPending] = useState<string | null>(null);
 
   const handleRescore = (profileName: string) => {
@@ -30,7 +43,24 @@ export function OptimizationLabPage() {
   return (
     <div className="optimization-lab-page">
       <section className="lab-panel">
-        <h2>Pareto Front</h2>
+        <div className="lab-panel__head">
+          <h2>Pareto Front</h2>
+          {withFront.length > 1 ? (
+            <label className="lab-picker">
+              Mission
+              <select
+                value={mission?.id ?? ''}
+                onChange={(event) => select({ kind: 'mission', id: event.target.value })}
+              >
+                {withFront.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.id} · {m.vehicleId} → {m.emergencyId} ({m.state.toLowerCase().replace(/_/g, ' ')})
+                  </option>
+                ))}
+              </select>
+            </label>
+          ) : null}
+        </div>
         {mission ? (
           <>
             <p className="muted">
@@ -68,6 +98,72 @@ export function OptimizationLabPage() {
         </p>
         {lastError && <p className="lab-error">{lastError}</p>}
       </aside>
+
+      {mission && mission.paretoFront.length > 1 && (
+        <section className="lab-panel lab-compare">
+          <h2>What each profile would choose</h2>
+          <p className="muted">
+            The same front, scored under all four profiles at once with the engine&apos;s own weights
+            (time / fuel / risk / distance). A plan that wins under several profiles is a robust
+            choice; a front where every profile picks a different plan is one where the operator&apos;s
+            priorities genuinely decide the outcome.
+          </p>
+          <div className="lab-compare__scroll">
+            <table className="dash-table">
+              <thead>
+                <tr>
+                  <th scope="col">Plan</th>
+                  <th scope="col">Time (s)</th>
+                  <th scope="col">Fuel</th>
+                  <th scope="col">Risk</th>
+                  <th scope="col">Distance (km)</th>
+                  {PROFILES.map((p) => (
+                    <th scope="col" key={p.name}>
+                      {p.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {mission.paretoFront.map((point) => (
+                  <tr key={point.planId} className={point.dominated ? 'lab-compare__dominated' : undefined}>
+                    <td className="mono">
+                      {point.planId}
+                      {point.dominated ? <span className="lab-compare__tag">dominated</span> : null}
+                    </td>
+                    <td className="mono">{Math.round(point.cost.time)}</td>
+                    <td className="mono">{point.cost.fuel.toFixed(3)}</td>
+                    <td className="mono">{point.cost.risk.toFixed(3)}</td>
+                    <td className="mono">{Math.round(point.cost.distance).toLocaleString()}</td>
+                    {PROFILES.map((p) => {
+                      const winner = recommendedPlanId(mission.paretoFront, p.name) === point.planId;
+                      const score = scorePoints(mission.paretoFront, p.name).get(point.planId);
+                      return (
+                        <td key={p.name} className={`mono${winner ? ' lab-compare__win' : ''}`}>
+                          {score === undefined ? '—' : score.toFixed(3)}
+                          {winner ? <span aria-label="chosen"> ★</span> : null}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="muted lab-compare__weights">
+            {PROFILES.map((p) => {
+              const w = PROFILE_WEIGHTS[p.name]!;
+              return (
+                <span key={p.name}>
+                  <strong>{p.label}</strong> {w.join(' / ')}
+                </span>
+              );
+            })}
+          </p>
+        </section>
+      )}
+
+      <ConstellationNetwork />
 
       {mission && mission.paretoHistory.length > 0 && (
         <section className="lab-panel lab-history">

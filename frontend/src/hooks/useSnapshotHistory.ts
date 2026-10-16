@@ -49,7 +49,9 @@ function mean(values: readonly number[]): number {
 }
 
 function sampleFrom(snapshot: SimulationSnapshot): HistorySample {
-  const active = snapshot.emergencies.filter((entry) => entry.state !== 'RESOLVED');
+  const active = snapshot.emergencies.filter(
+    (entry) => entry.state !== 'RESOLVED' && entry.state !== 'EXPIRED' && entry.state !== 'UNREACHABLE',
+  );
   const missions = snapshot.missions;
   const latencies = snapshot.algorithmRuns.map((run) => run.executionTimeMs);
 

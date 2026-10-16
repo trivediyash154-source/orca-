@@ -1,0 +1,139 @@
+/**
+ * The workspace below laptop width.
+ *
+ * The shell was laid out for a desktop instrument: a fixed 176px sidebar, a fixed 300px
+ * Mission Control column, and a scene told to take "whatever is left" with `flex: 1`. On a
+ * 390px phone "whatever is left" was zero — the globe disappeared entirely and the side
+ * column's cards were painted on top of each other. These rules restack the same components
+ * rather than hiding any: every panel that exists on desktop is reachable on a phone.
+ *
+ *   <= 1100px   Mission Control's side column narrows; the top bar sheds its long scenario name.
+ *   <=  900px   The shell becomes a single column: nav turns into a horizontal strip, the
+ *               scene gets a fixed share of the viewport, and side panels flow beneath it.
+
+ *
+ * Every selector is prefixed with `:root`. That is not decoration: `app.css` declares its own
+ * rules AFTER its `@import`s, and the entry surface's stylesheets load after `app.css`, so a
+ * rule here at equal specificity loses the cascade to the very rule it is meant to refine. One
+ * extra pseudo-class wins on specificity instead, which no future reordering of imports can undo. */
+
+@media (max-width: 1100px) {
+  :root .mission-control-side { width: 272px; }
+  :root .top-bar { gap: var(--orca-space-4); }
+  :root .top-bar-field:nth-of-type(1) .top-bar-value {
+    max-width: 22ch;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: block;
+  }
+}
+
+@media (max-width: 900px) {
+  /* The document scrolls, not a nested region: on touch devices a fixed-height shell with an
+     inner scroller traps the reader's thumb inside whichever panel it landed on. */
+  :root .app-shell {
+    height: auto;
+    min-height: 100vh;
+  }
+
+  :root .top-bar {
+    flex-wrap: wrap;
+    row-gap: var(--orca-space-2);
+    column-gap: var(--orca-space-3);
+    padding: var(--orca-space-2) var(--orca-space-3);
+  }
+
+  /* Scenario name and speed are the two fields a phone reader can do without; both remain on
+     the Dashboard header. Engine status and sim time stay — they are what says the page is live. */
+  :root .top-bar-field:nth-of-type(1),
+  :root .top-bar-field:nth-of-type(5) {
+    display: none;
+  }
+
+  :root .presentation-toggle { margin-left: 0; }
+
+  :root .top-bar-account {
+    margin-left: auto;
+    padding-left: 0;
+    border-left: 0;
+  }
+
+  :root .top-bar-account__email { display: none; }
+
+  :root .dash-source-banner__short { display: none; }
+
+  :root .app-body {
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* The sidebar becomes a horizontally scrolling tab strip. */
+  :root .sidebar-nav {
+    width: auto;
+    flex-direction: row;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: var(--orca-space-1) var(--orca-space-2);
+    border-right: 0;
+    border-bottom: 1px solid var(--orca-border);
+    scrollbar-width: none;
+    -webkit-overflow-scrolling: touch;
+    position: sticky;
+    top: 0;
+    z-index: 4;
+  }
+
+  :root .sidebar-nav::-webkit-scrollbar { display: none; }
+
+  :root .nav-item {
+    flex: 0 0 auto;
+    white-space: nowrap;
+    padding: var(--orca-space-2) var(--orca-space-3);
+  }
+
+  :root .nav-item-active {
+    border-left: 0;
+    padding-left: var(--orca-space-3);
+    box-shadow: inset 0 -2px 0 var(--orca-primary);
+  }
+
+  :root .main-content { overflow: visible; }
+
+  /* Mission Control: the scene first, at a fixed share of the screen, then every panel. */
+  :root .mission-control-page {
+    flex-direction: column;
+    height: auto;
+  }
+
+  :root .mission-control-scene {
+    flex: 0 0 auto;
+    height: min(62vh, 560px);
+    min-height: 320px;
+  }
+
+  :root .mission-control-side {
+    width: auto;
+    border-left: 0;
+    border-top: 1px solid var(--orca-border);
+    overflow: visible;
+  }
+
+  /* Overlay buttons wrap instead of running off the right edge of the scene. */
+  :root .scene-overlay-top {
+    flex-wrap: wrap;
+    right: var(--orca-space-2);
+  }
+
+  :root .scene-overlay-bottom { display: none; }
+
+  :root .event-timeline { overflow-x: auto; }
+}
+
+@media (max-width: 520px) {
+  :root .dash-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  :root .dash-stat__value { font-size: 1.5rem; }
+  :root .dash-head__tags { display: none; }
+  :root .dash-table { font-size: var(--orca-text-xs); }
+  :root .dash-panel { padding: var(--orca-space-3); }
+}

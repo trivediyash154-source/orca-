@@ -38,10 +38,12 @@ import type { SimulationSnapshot } from '../../types/engine';
 const SEVERITY_TOKEN: Readonly<Record<string, string>> = {
   CRITICAL: '--orca-critical',
   HIGH: '--orca-warning',
-  ELEVATED: '--orca-primary',
-  NOMINAL: '--orca-success',
-  RESOLVED: '--orca-neutral',
+  MODERATE: '--orca-primary',
+  LOW: '--orca-success',
 };
+
+/** Emergency states that no longer need a responder, per the engine's `EmergencyState`. */
+const CLOSED_STATES = new Set(['RESOLVED', 'EXPIRED', 'UNREACHABLE']);
 
 const ALGORITHM_TOKEN: Readonly<Record<string, string>> = {
   DIJKSTRA: '--orca-primary',
@@ -84,7 +86,7 @@ function OverviewBody({ snapshot }: { readonly snapshot: SimulationSnapshot }) {
   const { setPage } = useUI();
   const history = useSnapshotHistory(snapshot);
 
-  const activeEmergencies = snapshot.emergencies.filter((entry) => entry.state !== 'RESOLVED');
+  const activeEmergencies = snapshot.emergencies.filter((entry) => !CLOSED_STATES.has(entry.state));
   const criticalCount = activeEmergencies.filter((entry) => entry.severity === 'CRITICAL').length;
   const activeMissions = snapshot.missions.filter((entry) => entry.completedAtSec === null);
   const completedMissions = snapshot.missions.filter((entry) => entry.completedAtSec !== null);
@@ -454,7 +456,7 @@ function OverviewBody({ snapshot }: { readonly snapshot: SimulationSnapshot }) {
           subtitle="Active queue by severity band"
         >
           <DonutChart
-            slices={['CRITICAL', 'HIGH', 'ELEVATED', 'NOMINAL'].map((severity) => ({
+            slices={['CRITICAL', 'HIGH', 'MODERATE', 'LOW'].map((severity) => ({
               label: severity,
               value: activeEmergencies.filter((entry) => entry.severity === severity).length,
               token: SEVERITY_TOKEN[severity] ?? '--orca-neutral',

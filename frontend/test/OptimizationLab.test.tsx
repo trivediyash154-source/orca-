@@ -20,7 +20,7 @@ describe('OptimizationLabPage', () => {
   it('clicking a profile button calls rescoreParetoFront with the mission id and profile name', () => {
     const rescoreParetoFront = vi.fn().mockResolvedValue(undefined);
     render(withEngineContext({ snapshot: sampleSnapshot, rescoreParetoFront }, <OptimizationLabPage />));
-    fireEvent.click(screen.getByText('Fastest'));
+    fireEvent.click(screen.getByRole('button', { name: 'Fastest' }));
     expect(rescoreParetoFront).toHaveBeenCalledWith('M-000', 'FASTEST');
   });
 

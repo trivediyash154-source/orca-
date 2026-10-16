@@ -50,7 +50,7 @@ const DEG = Math.PI / 180;
 
 /** Numerical Recipes' LCG constants. Chosen because the values are standard and the generator
  * is two operations -- this is for reproducible layout, never for anything security-adjacent. */
-function lcg(seed: number): () => number {
+export function lcg(seed: number): () => number {
   let state = seed >>> 0;
   return () => {
     state = (Math.imul(1_664_525, state) + 1_013_904_223) >>> 0;
@@ -66,7 +66,7 @@ function orbitalPeriodSec(altitudeKm: number): number {
 /** Circular orbit in ECI, built from the same four elements the engine reports (altitude,
  * inclination, RAAN, phase) so a position shown here is geometrically consistent with the
  * orbit block beside it. */
-function positionFor(
+export function positionFor(
   altitudeKm: number,
   inclinationDeg: number,
   raanDeg: number,
@@ -128,12 +128,11 @@ const SAT_PREFIXES = [
   'CHANDRA',
 ] as const;
 
-const BANDS = ['LEO-LOW', 'LEO-MID', 'LEO-HIGH'] as const;
-
+/** The engine's `OrbitBand` strings (`domain/Types.hpp`): LEO | MEO | GEO. */
 function bandFor(altitudeKm: number): string {
-  if (altitudeKm < 600) return BANDS[0];
-  if (altitudeKm < 720) return BANDS[1];
-  return BANDS[2];
+  if (altitudeKm < 2_000) return 'LEO';
+  if (altitudeKm < 35_000) return 'MEO';
+  return 'GEO';
 }
 
 interface SatelliteSeed {
@@ -167,12 +166,14 @@ const SATELLITE_COUNT = 18;
 const VEHICLE_COUNT = 5;
 const DEBRIS_COUNT = 42;
 
+/** The engine's `EmergencyKind` strings (`domain/Types.hpp`'s `toString`), verbatim: the
+ * frontend maps these to labels and colours, and an unrecognised kind renders as "unknown". */
 const FAILURE_KINDS = [
-  'POWER_DEGRADATION',
-  'PROPULSION_LEAK',
+  'POWER_FAILURE',
+  'PROPULSION_FAILURE',
   'COMMS_LOSS',
-  'THERMAL_RUNAWAY',
-  'ATTITUDE_LOSS',
+  'THERMAL',
+  'FUEL_CRITICAL',
 ] as const;
 
 /** Built once per module load: the scenario is fixed for the deployment, exactly as a loaded
@@ -257,11 +258,12 @@ interface EmergencyState {
 const RESPONSE_WINDOW_SEC = 5_400;
 const MISSION_DURATION_SEC = 3_000;
 
+/** The engine's `Severity` scale: LOW | MODERATE | HIGH | CRITICAL. */
 function severityFor(remainingSec: number): string {
   if (remainingSec < 900) return 'CRITICAL';
   if (remainingSec < 2_400) return 'HIGH';
-  if (remainingSec < 4_000) return 'ELEVATED';
-  return 'NOMINAL';
+  if (remainingSec < 4_000) return 'MODERATE';
+  return 'LOW';
 }
 
 function emergenciesAt(timeSec: number): readonly EmergencyState[] {
@@ -282,12 +284,16 @@ function emergenciesAt(timeSec: number): readonly EmergencyState[] {
 
     // A mission is dispatched shortly after detection and resolves after its duration; past
     // that the emergency reads RESOLVED and drops out of the active queue's urgency ordering.
+    // The engine's `EmergencyState`: PENDING until a vehicle is assigned, ASSIGNED while it
+    // transfers, IN_PROGRESS on its final leg, RESOLVED once rendezvous completes.
     const state =
       elapsed > MISSION_DURATION_SEC + 240
         ? 'RESOLVED'
-        : elapsed > 180
-          ? 'ASSIGNED'
-          : 'DETECTED';
+        : elapsed > 180 + MISSION_DURATION_SEC / 2
+          ? 'IN_PROGRESS'
+          : elapsed > 180
+            ? 'ASSIGNED'
+            : 'PENDING';
 
     out.push({
       satellite,
@@ -295,7 +301,7 @@ function emergenciesAt(timeSec: number): readonly EmergencyState[] {
         id: `EMG-${String(index).padStart(3, '0')}-${occurrence + 1}`,
         subjectId: satellite.id,
         kind: satellite.failKind,
-        severity: state === 'RESOLVED' ? 'RESOLVED' : severityFor(remainingWindowSec),
+        severity: state === 'RESOLVED' ? 'LOW' : severityFor(remainingWindowSec),
         state,
         detectedAtSec,
         deadlineSec,
@@ -491,7 +497,17 @@ function missionsAt(timeSec: number, states: readonly EmergencyState[]): Mission
       id: `MSN-${String(index + 1).padStart(3, '0')}`,
       vehicleId: vehicle.id,
       emergencyId: emergency.id,
-      state: complete ? 'COMPLETED' : replans > 0 && elapsed < MISSION_DURATION_SEC / 3 + 60 ? 'REPLANNING' : 'EN_ROUTE',
+      // The engine's `MissionState`: IN_TRANSIT across the transfer, REPLANNING for the minute
+      // a replan takes, RENDEZVOUS on approach, SUCCESS once complete.
+      state: complete
+        ? 'SUCCESS'
+        : replans > 0 &&
+            elapsed >= MISSION_DURATION_SEC / 3 &&
+            elapsed < MISSION_DURATION_SEC / 3 + 60
+          ? 'REPLANNING'
+          : elapsed > MISSION_DURATION_SEC * 0.85
+            ? 'RENDEZVOUS'
+            : 'IN_TRANSIT',
       currentLeg,
       progressOnLeg: complete ? 1 : round(clamp01((elapsed - currentLeg * legSpan) / legSpan), 4),
       deltaVSpentKms: round(totalDeltaV * clamp01(elapsed / MISSION_DURATION_SEC), 4),
@@ -526,7 +542,7 @@ function eventsAt(
   for (const { emergency, satellite } of states) {
     out.push({
       id: `EVT-DET-${emergency.id}`,
-      kind: 'EMERGENCY_DETECTED',
+      kind: 'SATELLITE_FAILURE',
       timestampSec: emergency.detectedAtSec,
       satelliteId: satellite.id,
       vehicleId: null,
@@ -540,7 +556,7 @@ function eventsAt(
   for (const mission of missions) {
     out.push({
       id: `EVT-DSP-${mission.id}`,
-      kind: 'MISSION_DISPATCHED',
+      kind: 'MISSION_START',
       timestampSec: mission.startedAtSec,
       satelliteId: null,
       vehicleId: mission.vehicleId,
@@ -553,7 +569,7 @@ function eventsAt(
     if (mission.replanCount > 0) {
       out.push({
         id: `EVT-RPL-${mission.id}`,
-        kind: 'MISSION_REPLANNED',
+        kind: 'MISSION_REPLAN',
         timestampSec: round(mission.startedAtSec + MISSION_DURATION_SEC / 3, 1),
         satelliteId: null,
         vehicleId: mission.vehicleId,
@@ -567,7 +583,7 @@ function eventsAt(
     if (mission.completedAtSec !== null) {
       out.push({
         id: `EVT-CMP-${mission.id}`,
-        kind: 'MISSION_COMPLETED',
+        kind: 'RESCUE_COMPLETE',
         timestampSec: mission.completedAtSec,
         satelliteId: null,
         vehicleId: mission.vehicleId,
@@ -583,7 +599,7 @@ function eventsAt(
     if (timeSec < debris.detectAtSec) continue;
     out.push({
       id: `EVT-DEB-${debris.id}`,
-      kind: 'DEBRIS_DETECTED',
+      kind: 'DEBRIS_ALERT',
       timestampSec: debris.detectAtSec,
       satelliteId: null,
       vehicleId: null,
@@ -818,7 +834,15 @@ export function demoSnapshot({
     return {
       id: seed.id,
       name: seed.name,
-      status: resolved ? 'SERVICED' : failed ? 'EMERGENCY' : 'NOMINAL',
+      // The engine's `SatelliteStatus`: severity of the open emergency decides WARNING versus
+      // CRITICAL; a completed rescue reads RESCUED.
+      status: resolved
+        ? 'RESCUED'
+        : failed
+          ? emergency?.emergency.severity === 'CRITICAL'
+            ? 'CRITICAL'
+            : 'WARNING'
+          : 'NOMINAL',
       position: positionFor(seed.altitudeKm, seed.inclinationDeg, seed.raanDeg, seed.phaseDeg, timeSec),
       orbit: {
         altitudeKm: seed.altitudeKm,
@@ -851,7 +875,9 @@ export function demoSnapshot({
     return {
       id: seed.id,
       name: seed.name,
-      status: mission ? (mission.state === 'REPLANNING' ? 'REPLANNING' : 'EN_ROUTE') : 'STANDBY',
+      // The engine's `VehicleStatus`: IDLE when free, TRANSFERRING with a mission, ON_STATION
+      // during rendezvous.
+      status: mission ? (mission.state === 'RENDEZVOUS' ? 'ON_STATION' : 'TRANSFERRING') : 'IDLE',
       position: positionFor(seed.altitudeKm, seed.inclinationDeg, seed.raanDeg, seed.phaseDeg, timeSec),
       orbit: {
         altitudeKm: seed.altitudeKm,

@@ -11,7 +11,12 @@
  * job is to specialise surfaces those files have already laid down. Each selector here matches
  * the same specificity or higher than the rule it refines, and changes only background,
  * box-shadow and border — never layout, size or type, so nothing moves when this file loads.
- */
+
+ *
+ * Every selector is prefixed with `:root`. That is not decoration: `app.css` declares its own
+ * rules AFTER its `@import`s, and the entry surface's stylesheets load after `app.css`, so a
+ * rule here at equal specificity loses the cascade to the very rule it is meant to refine. One
+ * extra pseudo-class wins on specificity instead, which no future reordering of imports can undo. */
 
 /* ==========================================================================
    1. Grounds — the ambient wash
@@ -19,7 +24,7 @@
    Two large radial gradients, fixed to the viewport so they do not slide under a
    scrolling page and give away that they are a backdrop rather than light. */
 
-body {
+:root body {
   background-image:
     radial-gradient(90rem 60rem at 12% -10%, var(--orca-ambient-cool), transparent 60%),
     radial-gradient(70rem 50rem at 95% 108%, var(--orca-ambient-warm), transparent 62%);
@@ -31,7 +36,7 @@ body {
    2. Entry surface — the authentication console
    ========================================================================== */
 
-.mk-auth-console {
+:root .mk-auth-console {
   background:
     linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low) 38%, transparent 70%),
     radial-gradient(44rem 30rem at 108% -8%, var(--orca-ambient-cool), transparent 62%),
@@ -52,21 +57,21 @@ body {
    is correct — but the user-agent focus ring drew a hard box around a 2-line display heading
    and read as a rendering bug. It is replaced by a quiet accent rule under the title: still an
    unmistakable "focus is here" signal, at the weight a heading deserves. */
-.mk-page .mk-auth-title:focus {
+:root .mk-page .mk-auth-title:focus {
   outline: none;
 }
 
 /* Specificity note: `base.css`'s `.mk-page :focus-visible` is (0,2,0) and loads after this
    file, so the selector below is qualified with `.mk-page` to reach (0,3,0) and win. */
-.mk-page .mk-auth-title:focus-visible {
+:root .mk-page .mk-auth-title:focus-visible {
   outline: none;
   box-shadow: 0 2px 0 -1px var(--orca-mission-active);
 }
 
 /* Inputs read as recessed, which is the half of the elevation story a flat fill cannot tell:
    a control you type into should look like a well, not a plate. */
-.mk-auth-field__input,
-.mk-auth-code__input {
+:root .mk-auth-field__input,
+:root .mk-auth-code__input {
   background:
     linear-gradient(180deg, var(--orca-veil-sunken), transparent 52%),
     color-mix(in srgb, var(--orca-spectral-2) 5%, var(--orca-void-raised));
@@ -75,14 +80,14 @@ body {
     inset 0 -1px 0 var(--orca-edge-light);
 }
 
-.mk-auth-field__input:focus {
+:root .mk-auth-field__input:focus {
   box-shadow:
     inset 0 1px 2px var(--orca-edge-dark),
     var(--orca-focus-glow);
 }
 
 /* Social buttons are the opposite: raised plates, with the top-edge highlight that says so. */
-.mk-auth-social__button {
+:root .mk-auth-social__button {
   background:
     linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low)),
     color-mix(in srgb, var(--orca-spectral-2) 4%, var(--orca-surface-elevated));
@@ -91,7 +96,7 @@ body {
     var(--orca-shadow-raised);
 }
 
-.mk-auth-social__button:hover:not(:disabled) {
+:root .mk-auth-social__button:hover:not(:disabled) {
   background:
     linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-high)),
     var(--orca-surface-elevated);
@@ -100,7 +105,7 @@ body {
     var(--orca-shadow-floating);
 }
 
-.mk-auth-social__button:active:not(:disabled) {
+:root .mk-auth-social__button:active:not(:disabled) {
   /* Pressed: the highlight moves to the bottom and the shadow collapses, which is what a real
      pressed key does. One frame of this is worth any amount of colour change. */
   box-shadow:
@@ -112,20 +117,20 @@ body {
    3. Entry surface — cards, panels and the nav
    ========================================================================== */
 
-.mk-nav {
+:root .mk-nav {
   background:
     linear-gradient(180deg, var(--orca-veil-high), transparent),
     var(--orca-glass);
   box-shadow: inset 0 -1px 0 var(--orca-edge-dark);
 }
 
-.mk-card,
-.mk-panel,
-.mk-metric,
-.mk-capability,
-.mk-research-item,
-.mk-pipeline-step,
-.mk-preview-frame {
+:root .mk-card,
+:root .mk-panel,
+:root .mk-metric,
+:root .mk-capability,
+:root .mk-research-item,
+:root .mk-pipeline-step,
+:root .mk-preview-frame {
   background:
     linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low) 46%, transparent),
     var(--orca-void-raised);
@@ -138,7 +143,7 @@ body {
    4. Workspace — shell chrome
    ========================================================================== */
 
-.top-bar {
+:root .top-bar {
   background:
     linear-gradient(180deg, var(--orca-veil-high), transparent),
     var(--orca-surface);
@@ -151,14 +156,14 @@ body {
   z-index: 3;
 }
 
-.sidebar-nav {
+:root .sidebar-nav {
   background:
     linear-gradient(90deg, var(--orca-veil-low), transparent 40%),
     var(--orca-surface);
   box-shadow: inset -1px 0 0 var(--orca-edge-dark);
 }
 
-.nav-item-active {
+:root .nav-item-active {
   background:
     linear-gradient(90deg, color-mix(in srgb, var(--orca-primary) 18%, transparent), transparent 70%),
     transparent;
@@ -167,7 +172,7 @@ body {
   box-shadow: inset 2px 0 0 var(--orca-primary);
 }
 
-.event-timeline {
+:root .event-timeline {
   background:
     linear-gradient(180deg, var(--orca-veil-low), transparent),
     var(--orca-surface);
@@ -178,8 +183,8 @@ body {
    5. Workspace — dashboard panels and tiles
    ========================================================================== */
 
-.dash-stat,
-.dash-panel {
+:root .dash-stat,
+:root .dash-panel {
   background:
     linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low) 40%, transparent 72%),
     color-mix(in srgb, var(--orca-spectral-2) 4%, var(--orca-surface));
@@ -188,7 +193,7 @@ body {
     var(--orca-shadow-raised);
 }
 
-.dash-panel:hover {
+:root .dash-panel:hover {
   box-shadow:
     inset 0 1px 0 var(--orca-edge-light),
     var(--orca-shadow-floating);
@@ -196,19 +201,19 @@ body {
 
 /* The sticky table header sits on the panel's own gradient, so it needs its own opaque fill or
    rows scroll visibly through it. */
-.dash-table th {
+:root .dash-table th {
   background:
     linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low)),
     var(--orca-surface);
 }
 
-.dash-bars__track,
-.dash-meter {
+:root .dash-bars__track,
+:root .dash-meter {
   background: var(--orca-veil-sunken);
   box-shadow: inset 0 1px 2px var(--orca-edge-dark);
 }
 
-.dash-source-banner {
+:root .dash-source-banner {
   box-shadow:
     inset 0 1px 0 var(--orca-edge-light),
     var(--orca-shadow-raised);
@@ -220,16 +225,16 @@ body {
    Named individually rather than with a wildcard: a blanket `[class*="panel"]`
    would also catch the 3-D scene's overlay, which must stay transparent. */
 
-.control-panel,
-.object-inspector,
-.mission-intelligence,
-.fleet-readiness,
-.emergency-queue,
-.rescue-operations,
-.benchmark-evidence,
-.catalog-panel,
-.catalog-controls,
-.satellite-detail {
+:root .control-panel,
+:root .object-inspector,
+:root .mission-intelligence,
+:root .fleet-readiness,
+:root .emergency-queue,
+:root .rescue-operations,
+:root .benchmark-evidence,
+:root .catalog-panel,
+:root .catalog-controls,
+:root .satellite-detail {
   background:
     linear-gradient(180deg, var(--orca-veil-high), var(--orca-veil-low) 44%, transparent),
     var(--orca-surface);
@@ -246,10 +251,10 @@ body {
    that jumps under the pointer makes a dense page feel unstable. */
 
 @media (prefers-reduced-motion: no-preference) {
-  .mk-auth-social__button,
-  .dash-panel,
-  .mk-card,
-  .mk-panel {
+  :root .mk-auth-social__button,
+  :root .dash-panel,
+  :root .mk-card,
+  :root .mk-panel {
     transition:
       box-shadow 180ms cubic-bezier(0.2, 0, 0.2, 1),
       border-color 180ms cubic-bezier(0.2, 0, 0.2, 1),

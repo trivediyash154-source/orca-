@@ -21,6 +21,7 @@ import {
   type SimCommand,
 } from '../services/engineService';
 import { demoSnapshot } from '../services/demoEngine';
+import { rescoreFront } from '../services/profileScoring';
 import type { SelectableEntity, SimulationSnapshot } from '../types/engine';
 
 /** Brief §37's five states, verbatim. */
@@ -110,14 +111,31 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
   const demoTimeRef = useRef(DEMO_START_SEC);
   const demoStatusRef = useRef<'RUNNING' | 'PAUSED'>('RUNNING');
   const demoSpeedRef = useRef(1);
+  /** Mission id -> profile name for every live re-score requested in demo mode. */
+  const demoRescoreRef = useRef(new Map<string, string>());
 
   const publishDemo = useCallback(() => {
+    const base = demoSnapshot({
+      timeSec: demoTimeRef.current,
+      status: demoStatusRef.current,
+      speedMultiplier: demoSpeedRef.current,
+    });
+    const rescores = demoRescoreRef.current;
     setSnapshot(
-      demoSnapshot({
-        timeSec: demoTimeRef.current,
-        status: demoStatusRef.current,
-        speedMultiplier: demoSpeedRef.current,
-      }),
+      rescores.size === 0
+        ? base
+        : {
+            ...base,
+            missions: base.missions.map((mission) => {
+              const profile = rescores.get(mission.id);
+              if (profile === undefined) return mission;
+              return {
+                ...mission,
+                paretoFront: rescoreFront(mission.paretoFront, profile),
+                activeRescoreProfile: profile,
+              };
+            }),
+          },
     );
     setStatus('Connected');
     setLastError(null);
@@ -271,12 +289,12 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
   const rescoreParetoFront = useCallback(
     async (missionId: string, profile: string) => {
       if (dataSource === 'demo') {
-        // Re-scoring is a property of the engine's planner. The model has no second front to
-        // offer, and inventing one would misrepresent what a profile change does.
-        setLastError(
-          `Pareto re-scoring for ${missionId} under the "${profile}" profile needs the C++ ` +
-            'planner; the browser model cannot re-derive a front. Nothing was changed.',
-        );
+        // Re-scoring never re-runs a search: it re-applies the engine's weighted scorer to the
+        // front already captured. That is exactly reproducible here, with the engine's own
+        // profile weights (`services/profileScoring.ts`), so the browser model does it rather
+        // than refusing.
+        demoRescoreRef.current.set(missionId, profile);
+        publishDemo();
         return;
       }
       try {
@@ -287,7 +305,7 @@ export function EngineProvider({ baseUrl, pollIntervalMs = 500, children }: Engi
         setLastError(err instanceof Error ? err.message : String(err));
       }
     },
-    [baseUrl, dataSource],
+    [baseUrl, dataSource, publishDemo],
   );
 
   const runAlgorithm = useCallback(

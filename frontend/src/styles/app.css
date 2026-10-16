@@ -3,6 +3,7 @@
 @import './dashboard.css';
 /* Last: refines surfaces the three files above have already laid down. */
 @import './depth.css';
+@import './responsive.css';
 
 * {
   box-sizing: border-box;

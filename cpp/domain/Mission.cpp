@@ -38,7 +38,8 @@ Mission::Mission(MissionId id, const MissionPlan& plan, Seconds startedAtSec)
       vehicle_(plan.vehicle()),
       emergency_(plan.emergency()),
       currentRoute_(plan.route()),
-      startedAtSec_(startedAtSec) {
+      startedAtSec_(startedAtSec),
+      planDepartureSec_(plan.departureTimeSec()) {
     requireThat(plan.isFeasible(),
                 std::format("Mission {}: cannot commit infeasible plan {}", toString(id_),
                             toString(plan.id())));
@@ -103,6 +104,7 @@ void Mission::adoptRoute(const MissionPlan& replacement) {
     rejectedAlternatives_.push_back(sourcePlan_);
     sourcePlan_ = replacement.id();
     currentRoute_ = replacement.route();
+    planDepartureSec_ = replacement.departureTimeSec();
     currentLeg_ = 0;
     progressOnLeg_ = 0.0;
     ++replanCount_;

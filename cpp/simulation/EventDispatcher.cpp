@@ -12,6 +12,7 @@
 #include "../planning/GlobalReplanner.hpp"
 #include "../planning/MissionValidity.hpp"
 #include "../planning/ReplanDecision.hpp"
+#include "MissionExecutor.hpp"
 
 namespace orca {
 
@@ -54,6 +55,10 @@ void applyReplanDecision(SimulationEngine& engine, Mission& mission, RescueVehic
             mission.adoptRoute(*decision.newPlan);
             mission.setState(MissionState::InTransit);
             state.missionPlans.insert_or_assign(mission.id().value(), *decision.newPlan);
+            // Bring progress on the (possibly still in-progress) first leg up to date now, so a
+            // second replan in the same tick sees the same commitment point as this one.
+            (void)advanceMissionProgress(mission, vehicle, *decision.newPlan, engine.graphForDispatch(),
+                                         engine.modelForDispatch(), engine.currentTimeSec());
             ++state.metrics.replansCompleted;
             // Phase 10's "why ORCA chose it" panel -- the deterministic, table-driven
             // explanation of this real decision, not generated prose (`ReplanDecision.hpp`'s
@@ -201,7 +206,8 @@ void runGlobalReplanAndDispatchMissions(SimulationEngine& engine) {
     const AssignmentResult result =
         evaluateGlobalReplan(engine.graphForDispatch(), engine.modelForDispatch(), available,
                             pending, engine.currentTimeSec(), engine.config().profile,
-                            state.nextPlanId);
+                            state.nextPlanId, defaultPriorityWeights(),
+                            engine.config().dispatchSolver == DispatchSolver::Greedy);
     ++state.metrics.replansTriggered;
 
     // The REAL assignment solver's own metrics -- Hungarian, `evaluateGlobalReplan()`'s
@@ -314,7 +320,9 @@ void handleSatelliteFailure(SimulationEngine& engine, const Event& event) {
     satellite->assignEmergency(emergencyId);
     state.emergencies.emplace(emergencyId.value(), std::move(emergency));
 
-    runGlobalReplanAndDispatchMissions(engine);
+    if (engine.config().dispatchCycleSec <= 0.0) {
+        runGlobalReplanAndDispatchMissions(engine);
+    }
 }
 
 void handleDebrisAlert(SimulationEngine& engine, const Event& event) {
@@ -390,7 +398,9 @@ void handleRendezvous(SimulationEngine& engine, const Event& event) {
     vehicle->clearMission();
     if (vehicle->canTransitionTo(VehicleStatus::OnStation)) vehicle->setStatus(VehicleStatus::OnStation);
     if (vehicle->canTransitionTo(VehicleStatus::Returning)) vehicle->setStatus(VehicleStatus::Returning);
-    if (vehicle->canTransitionTo(VehicleStatus::Idle)) vehicle->setStatus(VehicleStatus::Idle);
+    if (!engine.config().singleSortie && vehicle->canTransitionTo(VehicleStatus::Idle)) {
+        vehicle->setStatus(VehicleStatus::Idle);
+    }
 
     if (emergency->canTransitionTo(EmergencyState::InProgress)) {
         emergency->setState(EmergencyState::InProgress);
@@ -418,10 +428,17 @@ void handleRendezvous(SimulationEngine& engine, const Event& event) {
     // A vehicle freed by completing a rescue may immediately be useful for any emergency
     // still waiting -- the same "idle vehicle becomes available -> reconsider the fleet"
     // logic a preemption's freed vehicle would also need (DYNAMIC_REPLANNING.md §5).
-    runGlobalReplanAndDispatchMissions(engine);
+    if (engine.config().dispatchCycleSec <= 0.0) {
+        runGlobalReplanAndDispatchMissions(engine);
+    }
 }
 
 }  // namespace
+
+void dispatchPendingEmergencies(SimulationEngine& engine) {
+    runGlobalReplanAndDispatchMissions(engine);
+}
+
 
 void dispatchEvent(SimulationEngine& engine, const Event& event) {
     engine.stateMutable().metrics.eventsProcessed++;

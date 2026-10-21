@@ -14,7 +14,8 @@ AssignmentResult evaluateGlobalReplan(const MissionGraph& graph, const TransferM
                                       const std::vector<Emergency>& pendingEmergencies,
                                       Seconds nowSec, const OptimizationProfile& profile,
                                       PlanId& nextPlanId,
-                                      const PriorityWeights& priorityWeights) {
+                                      const PriorityWeights& priorityWeights,
+                                      bool useGreedy) {
     // Every vehicle offered here is about to be considered for a BRAND NEW assignment --
     // one already flying an active mission must never appear in this list (found during
     // Phase 7's adversarial self-review: nothing previously stopped a caller from
@@ -59,7 +60,8 @@ AssignmentResult evaluateGlobalReplan(const MissionGraph& graph, const TransferM
     for (const Emergency& e : pendingEmergencies) emergencyIds.push_back(e.id());
 
     const AssignmentMatrix matrix = buildAssignmentMatrix(costs, vehicleIds, emergencyIds);
-    return solveAssignmentHungarian(matrix, fronts, scored);
+    return useGreedy ? solveAssignmentGreedy(matrix, fronts, scored)
+                     : solveAssignmentHungarian(matrix, fronts, scored);
 }
 
 }  // namespace orca

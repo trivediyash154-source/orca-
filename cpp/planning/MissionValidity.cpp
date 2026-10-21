@@ -1,5 +1,6 @@
 #include "MissionValidity.hpp"
 
+#include <algorithm>
 #include <format>
 
 #include "../core/Validation.hpp"
@@ -150,6 +151,43 @@ std::size_t remainingLegStartIndex(std::size_t currentLeg, double progressOnLeg)
     return progressOnLeg > 0.0 ? currentLeg + 1 : currentLeg;
 }
 
+CommitmentPoint commitmentPoint(const Mission& mission, const MissionGraph& graph,
+                                const TransferModel& model, Seconds nowSec,
+                                KmPerSec vehicleBudgetKms) {
+    CommitmentPoint cp;
+    cp.startLeg = remainingLegStartIndex(mission.currentLeg(), mission.progressOnLeg());
+    cp.readyAtSec = nowSec;
+    const std::vector<EdgeId>& route = mission.currentRoute();
+    if (cp.startLeg == mission.currentLeg() || mission.currentLeg() >= route.size()) {
+        return cp;  // not mid-leg: free to change course now
+    }
+
+    // Re-time the governing plan up to the in-progress leg exactly as the executor does.
+    TransferConstraints timing;
+    timing.maxDeltaVKms = 1.0e6;
+    timing.deltaVBudgetKms = vehicleBudgetKms > 0.0 ? vehicleBudgetKms : 1.0;
+    timing.availableFuelFraction = 1.0;
+    timing.maxWaitSec = 1.0e13;
+    timing.maxRisk = 1.0;
+    timing.latestArrivalSec = 1.0e18;
+    timing.maxPathLengthKm = 1.0e12;
+    Seconds departure = mission.planDepartureSec();
+    for (std::size_t i = 0; i <= mission.currentLeg(); ++i) {
+        const GraphEdge& edge = graph.edge(route[i]);
+        const TransferResult leg = model.evaluate(graph.node(edge.from()).orbit(),
+                                                  graph.node(edge.to()).orbit(), departure, timing);
+        if (i == mission.currentLeg()) {
+            cp.inProgressEdge = route[i];
+            cp.inProgressDepartureSec = departure;
+            cp.readyAtSec = std::max(leg.geometry.arrivalTimeSec, nowSec);
+            cp.committedDeltaVKms = leg.geometry.deltaVKms;
+            cp.committedCost = leg.objectives();
+        }
+        departure = leg.geometry.arrivalTimeSec;
+    }
+    return cp;
+}
+
 RemainingRouteEvaluation evaluateRemainingRouteCost(const MissionGraph& graph,
                                                      const TransferModel& model,
                                                      const std::vector<EdgeId>& route,
@@ -197,12 +235,14 @@ MissionValidity evaluateMissionValidity(const Mission& mission, const RescueVehi
         return validity;
     }
 
-    const std::size_t startLeg =
-        remainingLegStartIndex(mission.currentLeg(), mission.progressOnLeg());
+    const CommitmentPoint cp =
+        commitmentPoint(mission, graph, model, nowSec, vehicle.deltaVBudgetKms());
+    const std::size_t startLeg = cp.startLeg;
     const TransferConstraints constraints = makeRemainingRouteConstraints(
-        vehicle.deltaVRemainingKms(), vehicle.deltaVBudgetKms(), emergency.deadlineSec());
+        std::max(0.0, vehicle.deltaVRemainingKms() - cp.committedDeltaVKms),
+        vehicle.deltaVBudgetKms(), emergency.deadlineSec());
     validity.remaining = evaluateRemainingRouteCost(graph, model, mission.currentRoute(),
-                                                     startLeg, nowSec, constraints,
+                                                     startLeg, cp.readyAtSec, constraints,
                                                      invalidatedEdge);
 
     if (startLeg == mission.currentRoute().size()) {

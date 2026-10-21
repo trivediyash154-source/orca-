@@ -26,4 +26,8 @@ namespace orca {
 /// not acted on, should not crash a run).
 void dispatchEvent(SimulationEngine& engine, const Event& event);
 
+/// Runs one global assignment over every pending emergency and available vehicle. Called by
+/// the tick loop once per `SimulationEngineConfig::dispatchCycleSec` when cycling is enabled.
+void dispatchPendingEmergencies(SimulationEngine& engine);
+
 }  // namespace orca

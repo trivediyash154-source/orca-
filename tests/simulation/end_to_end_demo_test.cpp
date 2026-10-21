@@ -88,7 +88,12 @@ ORCA_TEST(EndToEndDemo, PropulsionFailureThroughDebrisRerouteToRescueComplete) {
     const RescueVehicle* vehicle = engine.state().findVehicle(VehicleId(1));
     CHECK(vehicle->status() == VehicleStatus::Idle);
     CHECK(!vehicle->activeMission().has_value());
-    CHECK_NEAR(vehicle->deltaVRemainingKms(), 8.9910, 1e-3);
+    // 10.0 km/s budget minus all three legs actually flown: the in-progress leg to MID-A
+    // (0.436256), then MID-A -> MID-B (0.288446) and MID-B -> casualty (0.720524).
+    // This used to read 8.9910, which was the in-progress leg's delta-v silently dropped by
+    // the replan (see replan_commitment_test.cpp).
+    CHECK_NEAR(vehicle->deltaVRemainingKms(), 8.5548, 1e-3);
+    CHECK_EQ(mission->currentRoute().size(), std::size_t{3});
 
     CHECK_EQ(engine.state().metrics.missionSuccesses, 1L);
     CHECK_EQ(engine.state().metrics.replansTriggered, 1L);

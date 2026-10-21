@@ -53,6 +53,7 @@ add_library(orca_core STATIC
     algorithms/GreedyAssignment.cpp
     algorithms/Hungarian.cpp
     algorithms/ParetoSearch.cpp
+    algorithms/NamoaStar.cpp
     algorithms/PathResult.cpp
 
     optimization/AssignmentCost.cpp

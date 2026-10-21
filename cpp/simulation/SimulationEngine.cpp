@@ -34,6 +34,7 @@ void SimulationEngine::reset() {
     // the event log -- a fresh run should start with a fresh record, the same reasoning
     // `state_.metrics` resets via `makeInitialState()` above.
     replanner_ = DynamicReplanner(config_.replanPolicy);
+    lastCycleDispatchSec = 0.0;
 }
 
 void SimulationEngine::tick() {
@@ -46,6 +47,12 @@ void SimulationEngine::tick() {
         const Event event = queue_.pop();
         dispatchEvent(*this, event);
         state_.recordEvent(event);
+    }
+
+    // Step 3b (evaluation option): cycle dispatch of everything pending.
+    if (config_.dispatchCycleSec > 0.0 && now - lastCycleDispatchSec >= config_.dispatchCycleSec) {
+        lastCycleDispatchSec = now;
+        dispatchPendingEmergencies(*this);
     }
 
     // Step 4: advance every active, in-transit mission's execution to `now`.

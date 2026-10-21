@@ -127,6 +127,28 @@ struct RemainingRouteEvaluation {
 ///        from this one or duplicate it; a single walk now optionally reports both.
 ///
 /// @throws std::invalid_argument if `startLegIndex > route.size()`.
+/// Where and when a mission becomes free to change course.
+///
+/// A leg that has started (progress > 0) is committed: the vehicle is already loitering
+/// for, or flying, that transfer. Any replanning must therefore start from the END of that
+/// leg, at the time it actually arrives there, with that leg's delta-v treated as spent.
+/// Before this existed the replanner restarted from the leg's end node at the current time,
+/// which skipped the rest of the leg's flight time and never charged its delta-v.
+struct CommitmentPoint {
+    std::size_t startLeg = 0;           ///< first leg that can still be changed
+    Seconds readyAtSec = 0.0;           ///< when the vehicle reaches that leg's start node
+    KmPerSec committedDeltaVKms = 0.0;  ///< delta-v of the in-progress leg, not yet charged
+    ObjectiveVector committedCost;      ///< objective vector of the in-progress leg
+    std::optional<EdgeId> inProgressEdge;
+    Seconds inProgressDepartureSec = 0.0;
+};
+
+/// @param vehicleBudgetKms  the vehicle's total delta-v budget, used only to express the
+///                          committed leg's fuel objective on the same scale as plans.
+[[nodiscard]] CommitmentPoint commitmentPoint(const Mission& mission, const MissionGraph& graph,
+                                              const TransferModel& model, Seconds nowSec,
+                                              KmPerSec vehicleBudgetKms);
+
 [[nodiscard]] RemainingRouteEvaluation evaluateRemainingRouteCost(
     const MissionGraph& graph, const TransferModel& model, const std::vector<EdgeId>& route,
     std::size_t startLegIndex, Seconds nowSec, const TransferConstraints& constraints,

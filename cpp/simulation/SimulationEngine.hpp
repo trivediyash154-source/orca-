@@ -42,6 +42,8 @@ namespace orca {
 
 /// Configuration a run needs beyond what `Scenario` itself carries -- policy knobs, not
 /// world data.
+enum class DispatchSolver { Hungarian, Greedy };
+
 struct SimulationEngineConfig {
     OptimizationProfile profile = OptimizationProfile::balanced();
     ReplanPolicy replanPolicy = defaultReplanPolicy();
@@ -52,6 +54,22 @@ struct SimulationEngineConfig {
     /// semi-major axis within this many km of the debris object's own. Not conjunction
     /// analysis; a documented, explicit simplification.
     Kilometres debrisProximityThresholdKm = 50.0;
+
+    // --- Evaluation options. The defaults reproduce the engine's original behaviour. ---
+
+    /// Solver used by the dispatch step. Greedy exists so an evaluation can compare the two
+    /// end to end on identical event sequences.
+    DispatchSolver dispatchSolver = DispatchSolver::Hungarian;
+
+    /// 0 (default) dispatches each emergency the moment it is declared. A positive value
+    /// instead dispatches all pending emergencies together once per cycle, the setting in
+    /// which a global matching can differ from a greedy one.
+    Seconds dispatchCycleSec = 0.0;
+
+    /// When true a vehicle is retired after one rescue. The mission graph keeps every vehicle
+    /// at its launch orbit, so a reused vehicle would otherwise depart from where it started
+    /// rather than from where its previous rescue ended.
+    bool singleSortie = false;
 };
 
 class SimulationEngine {
@@ -124,6 +142,9 @@ public:
     [[nodiscard]] DynamicReplanner& replannerMutable() noexcept { return replanner_; }
     [[nodiscard]] const SimulationEngineConfig& config() const noexcept { return config_; }
     [[nodiscard]] Seconds currentTimeSec() const noexcept { return clock_.currentTimeSec(); }
+
+    /// Time of the last cycle dispatch; used only when `config().dispatchCycleSec > 0`.
+    Seconds lastCycleDispatchSec = 0.0;
 
 private:
     void tick();

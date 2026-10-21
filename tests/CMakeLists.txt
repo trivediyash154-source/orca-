@@ -92,6 +92,7 @@ add_executable(orca_tests
     planning/global_replanner_test.cpp
     planning/mission_validity_test.cpp
     planning/preemption_test.cpp
+    planning/replan_commitment_test.cpp
 
     simulation/emergency_generator_test.cpp
     simulation/end_to_end_demo_test.cpp

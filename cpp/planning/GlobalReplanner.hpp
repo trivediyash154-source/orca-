@@ -53,6 +53,7 @@ namespace orca {
     const std::vector<RescueVehicle>& availableVehicles,
     const std::vector<Emergency>& pendingEmergencies, Seconds nowSec,
     const OptimizationProfile& profile, PlanId& nextPlanId,
-    const PriorityWeights& priorityWeights = defaultPriorityWeights());
+    const PriorityWeights& priorityWeights = defaultPriorityWeights(),
+    bool useGreedy = false);
 
 }  // namespace orca

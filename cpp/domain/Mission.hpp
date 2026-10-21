@@ -53,6 +53,10 @@ public:
     [[nodiscard]] std::size_t currentLeg() const noexcept { return currentLeg_; }
     [[nodiscard]] double progressOnLeg() const noexcept { return progressOnLeg_; }
     [[nodiscard]] Seconds startedAtSec() const noexcept { return startedAtSec_; }
+    /// Departure time of the plan currently governing this mission. Leg timings are
+    /// recomputed from it (MissionExecutor.cpp), so the replanner needs it to know when an
+    /// in-progress leg will actually end.
+    [[nodiscard]] Seconds planDepartureSec() const noexcept { return planDepartureSec_; }
     [[nodiscard]] const std::optional<Seconds>& completedAtSec() const noexcept {
         return completedAtSec_;
     }
@@ -115,6 +119,7 @@ private:
     std::size_t currentLeg_ = 0;
     double progressOnLeg_ = 0.0;
     Seconds startedAtSec_;
+    Seconds planDepartureSec_ = 0.0;
     std::optional<Seconds> completedAtSec_;
     KmPerSec deltaVSpentKms_ = 0.0;
     int replanCount_ = 0;

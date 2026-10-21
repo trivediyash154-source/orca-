@@ -177,6 +177,21 @@ bool isMaterialChange(const MissionChange& trigger, const ReplanPolicy& policy) 
     return *trigger.magnitudeFraction >= threshold;
 }
 
+/// Prefixes a replacement plan with the in-progress leg it must follow, so the executor keeps
+/// flying (and charging) that leg instead of skipping it. A no-op when nothing is in progress.
+MissionPlan withCommittedLeg(const CommitmentPoint& cp, const MissionPlan& candidate) {
+    if (!cp.inProgressEdge.has_value()) {
+        return candidate;
+    }
+    std::vector<EdgeId> route;
+    route.reserve(candidate.route().size() + 1);
+    route.push_back(*cp.inProgressEdge);
+    route.insert(route.end(), candidate.route().begin(), candidate.route().end());
+    return MissionPlan::makeFeasible(candidate.id(), candidate.vehicle(), candidate.emergency(),
+                                     std::move(route), compose(cp.committedCost, candidate.totalCost()),
+                                     cp.inProgressDepartureSec, candidate.arrivalTimeSec());
+}
+
 NodeId currentRouteNode(const MissionGraph& graph, const std::vector<EdgeId>& route,
                         std::size_t startLeg) {
     return graph.edge(route[startLeg]).from();
@@ -276,6 +291,13 @@ ReplanDecision DynamicReplanner::evaluate(const Mission& mission, const RescueVe
     const MissionValidity validity = evaluateMissionValidity(
         mission, vehicle, emergency, graph, model, nowSec, policy_, trigger.invalidatedEdge);
     decision.validity = validity;
+
+    // Replanning starts where the mission is next free to change course: the end of any
+    // in-progress leg, at that leg's arrival time, with its delta-v already committed.
+    const CommitmentPoint commitment =
+        commitmentPoint(mission, graph, model, nowSec, vehicle.deltaVBudgetKms());
+    const KmPerSec availableDeltaV =
+        std::max(0.0, vehicle.deltaVRemainingKms() - commitment.committedDeltaVKms);
     decision.previousRemainingCost = validity.remaining.cost;
     decision.previousArrivalSec = validity.remaining.arrivalTimeSec;
     decision.detail = validity.detail;
@@ -305,7 +327,7 @@ ReplanDecision DynamicReplanner::evaluate(const Mission& mission, const RescueVe
         }
 
         const std::size_t startLeg =
-            remainingLegStartIndex(mission.currentLeg(), mission.progressOnLeg());
+            commitment.startLeg;
         requireThat(startLeg < mission.currentRoute().size(),
                     "DynamicReplanner::evaluate: Invalid validity but no route remains -- "
                     "should have been Completed");
@@ -317,8 +339,8 @@ ReplanDecision DynamicReplanner::evaluate(const Mission& mission, const RescueVe
         const NodeId sourceNode = currentRouteNode(graph, mission.currentRoute(), startLeg);
 
         const ParetoFront rawFront =
-            generateReplanFront(graph, model, sourceNode, satelliteIt->second, nowSec,
-                               vehicle.deltaVRemainingKms(), emergency.deadlineSec(),
+            generateReplanFront(graph, model, sourceNode, satelliteIt->second, commitment.readyAtSec,
+                               availableDeltaV, emergency.deadlineSec(),
                                mission.vehicle(), mission.emergency(), nextPlanId);
         metrics_.candidatePlansGenerated +=
             static_cast<int>(rawFront.solutions.size() + rawFront.dominated.size());
@@ -331,7 +353,7 @@ ReplanDecision DynamicReplanner::evaluate(const Mission& mission, const RescueVe
             ++metrics_.aborts;
         } else {
             decision.decision = ReplanDecisionType::Replan;
-            decision.newPlan = front.solutions[recommended->planIndex];
+            decision.newPlan = withCommittedLeg(commitment, front.solutions[recommended->planIndex]);
             ++metrics_.planSwitches;
             recordReplanTimestamp(mission.id(), nowSec);
         }
@@ -351,7 +373,7 @@ ReplanDecision DynamicReplanner::evaluate(const Mission& mission, const RescueVe
         } else {
             ++metrics_.optionalReplans;
             const std::size_t startLeg =
-                remainingLegStartIndex(mission.currentLeg(), mission.progressOnLeg());
+                commitment.startLeg;
             requireThat(startLeg < mission.currentRoute().size(),
                         "DynamicReplanner::evaluate: Valid/Warning but no route remains -- "
                         "should have been Completed");
@@ -363,8 +385,8 @@ ReplanDecision DynamicReplanner::evaluate(const Mission& mission, const RescueVe
             const NodeId sourceNode = currentRouteNode(graph, mission.currentRoute(), startLeg);
 
             const ParetoFront rawFront =
-                generateReplanFront(graph, model, sourceNode, satelliteIt->second, nowSec,
-                                   vehicle.deltaVRemainingKms(), emergency.deadlineSec(),
+                generateReplanFront(graph, model, sourceNode, satelliteIt->second, commitment.readyAtSec,
+                                   availableDeltaV, emergency.deadlineSec(),
                                    mission.vehicle(), mission.emergency(), nextPlanId);
             metrics_.candidatePlansGenerated +=
                 static_cast<int>(rawFront.solutions.size() + rawFront.dominated.size());
@@ -399,7 +421,7 @@ ReplanDecision DynamicReplanner::evaluate(const Mission& mission, const RescueVe
                 if (oldScore - newScore >= policy_.switchMargin) {
                     decision.decision = ReplanDecisionType::Replan;
                     decision.reason = reasonForChangeKind(trigger.kind);
-                    decision.newPlan = candidate;
+                    decision.newPlan = withCommittedLeg(commitment, candidate);
                     ++metrics_.planSwitches;
                     recordReplanTimestamp(mission.id(), nowSec);
                 } else {
